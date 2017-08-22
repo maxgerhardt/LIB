@@ -20,6 +20,21 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+
+#if 1
+char * strsep(char **stringp, const char *delim) {
+    if (*stringp == NULL) { return NULL; }
+    char *token_start = *stringp;
+    *stringp = strpbrk(token_start, delim);
+    if (*stringp)
+    {
+        **stringp = '\0';
+        (*stringp)++;
+    }
+    return token_start;
+}
+#endif
+
 /**
  * Starts tokenizing an AT response string
  * returns -1 if this is not a valid response string, 0 on success.
