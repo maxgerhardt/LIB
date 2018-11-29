@@ -1,0 +1,19 @@
+{
+  "name": "Quectel BC66-TE-B",
+  "url": "https://www.quectel.com/",
+  "build": {
+    "core": "bc66",
+    "f_cpu": "78000000L",
+    "mcu": "ARM",
+    "cpu": "cortex-m4",
+    "variant": "BC66-TE-B"
+  },
+  "frameworks": [
+    "OpenCPU BC66"
+  ],
+  "vendor": "quectel",
+  "upload": {
+        "maximum_ram_size": 100000,
+        "maximum_size": 200000
+  }
+}

@@ -1,0 +1,7 @@
+{
+    "name": "framework-opencpu",
+    "description": "Quectel OpenCPU Framework for PlatformIO",
+    "url": "https://www.quectel.com/",
+    "version": "1.0.0",
+    "mod": "Georgi Angelov"
+}
