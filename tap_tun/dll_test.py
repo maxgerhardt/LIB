@@ -1,4 +1,4 @@
-import os, sys, struct, socket, threading, subprocess, logging
+import os, sys, struct, time, socket, threading, subprocess, logging
 from ctypes import *
 from ctypes.wintypes import *
 from ctypes import wintypes
@@ -68,10 +68,6 @@ GetOverlappedResult.restype = BOOL
 GetOverlappedResult.argtypes = [HANDLE, LPOVERLAPPED, LPDWORD, BOOL]
 
 
-
-
-
-
 def TunTap(nic_type, nic_name = None):
     if not sys.platform.startswith("win"):
         tap = Tap(nic_type,nic_name)
@@ -115,7 +111,7 @@ class WindowsTap(Tap):
         self.write_overlapped                   = OVERLAPPED()
         eventhandle                             = ctypes.windll.kernel32.CreateEventW(None, True, False, None)
         self.write_overlapped.hEvent            = eventhandle
-        self.buffer                             = b'0'*2048 # AllocateReadBuffer(2000)    
+        self.buffer                             = create_string_buffer(2000)   
 
     def _CTL_CODE(self,device_type, function, method, access):
         return (device_type << 16) | (access << 14) | (function << 2) | method;
@@ -123,26 +119,43 @@ class WindowsTap(Tap):
     def _TAP_CONTROL_CODE(self,request, method):
         return self._CTL_CODE(34, request, method, 0)
 
-    def _get_device_guid(self):
-        pass
+    def OpenKey(self, root, key):
+        KEY_QUERY_VALUE = 0x0001 
+        KEY_READ = 0x00020019
+        INVALID_HANDLE_VALUE = 4294967295
+        val = HKEY(INVALID_HANDLE_VALUE)
+        err = ctypes.windll.advapi32.RegOpenKeyExW( root, key, 0, KEY_READ, byref( val ) )
+        if 0 == err: 
+            return HKEY(val.value)
+        return None       
 
-    def create(self):
-        guid = '{97188393-19A4-47D9-A1D8-C90F9591776A}' # self._get_device_guid()
-        name = "\\\\.\\Global\\%s.tap"%guid
-        self.handle = ctypes.windll.kernel32.CreateFileA(
-            name.encode("ascii"),
-            GENERIC_READ | GENERIC_WRITE, 
-            0, 
-            None, 
-            OPEN_EXISTING, 
-            FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED,
-            None
-        )        
-        #if self.handle == -1: raise ctypes.WinError()
-        if self.handle:
-            return self
-        else:
+    def QueryValueString(self, hkey, name):
+        size = 256
+        lpcbData = DWORD(size)
+        buf = create_string_buffer(size)
+        err = ctypes.windll.advapi32.RegQueryValueExW( hkey, name, 0, b'REG_SZ', cast(buf, LPBYTE), byref( lpcbData ) )
+        if 0 == err:
+            return buf[::2].decode().rstrip('\x00')
+        return None
+
+    def _get_device_guid(self):
+        HKEY_LOCAL_MACHINE = 2147483650 
+        adapters = self.OpenKey(HKEY_LOCAL_MACHINE, self.adapter_key)
+        if adapters == None: 
             return None
+        for i in range(30):
+            enum_name = create_unicode_buffer(32) # 00XX
+            err = ctypes.windll.advapi32.RegEnumKeyW(adapters, i, enum_name, 32)
+            if 0 == err:
+                adapter = self.OpenKey(adapters, enum_name)
+                if c_void_p(0) == adapter: continue
+                #print('ADAPTER', i, adapter)
+                if self.component_id == self.QueryValueString(adapter, 'ComponentId'):
+                    guid = self.QueryValueString(adapter, 'NetCfgInstanceId')
+                    print('FOUND', self.component_id, guid)
+                    return guid
+            else: break
+        return None
 
     def _mac2string(self, mac):
         print('mac', mac)
@@ -163,6 +176,34 @@ class WindowsTap(Tap):
                 print('FIND ADAPTER', res)
                 return res
         print('NO ADAPTER')
+
+
+
+    def create(self):
+        guid =  self._get_device_guid()
+        if None == guid:
+            print('[ERROR] TAP not found')
+            return None
+        name = "\\\\.\\Global\\%s.tap"%guid
+        #print('FILE', name)
+        self.handle = ctypes.windll.kernel32.CreateFileA(
+            name.encode("ascii"),
+            GENERIC_READ | GENERIC_WRITE, 
+            0, 
+            None, 
+            OPEN_EXISTING, 
+            FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED,
+            None
+        )        
+        if self.handle == -1: 
+            print('TAP_TUN_SLIP SERVICE')
+            return None # [WinError 31] A device attached to the system is not functioning.
+            raise ctypes.WinError()
+        if self.handle:
+            print('TAP HANDLE', self.handle)
+            return self
+        return None
+
 
     def config(self, ip, mask, gateway = "0.0.0.0"):
         self.ip = ip
@@ -206,16 +247,15 @@ class WindowsTap(Tap):
         result = None
         try:
             ResetEvent(self.read_overlapped.hEvent)
-            rd = b'0'*4
-            ReadFile(self.handle, self.buffer, 2048, ctypes.pointer(rd), self.read_overlapped)
+            rd = DWORD()
+            ReadFile(self.handle, self.buffer, 2000, byref(rd), self.read_overlapped)
             print('READ', rd)
-
             err = 0
-            if err == 997:#ERROR_IO_PENDING
-                n = GetOverlappedResult(self.handle,self.read_overlapped,True)
-                result = bytes(data[:n])
+            if err == 997: # ERROR_IO_PENDING
+                n = GetOverlappedResult(self.handle, self.read_overlapped, True)
+                result = bytes(self.buffer[:n])
             else:
-                result = bytes(data)
+                result = bytes(self.buffer)
         finally:
             self.read_lock.release()
         return result
@@ -226,10 +266,22 @@ class WindowsTap(Tap):
 #t = TunTap('Tap', 'Azure Sphere')
 #t.config("192.168.35.1","255.255.255.0")
 
-r = str( subprocess.check_output("ipconfig/all", shell = True) )
-r = r.split("\\r\\n")
-for i in range(1, len(r)): print(r[i])
+def isAzureSphereAdapter():
+    r = str( subprocess.check_output("ipconfig/all", shell = True) )
+    r = r.split("adapter")
+    for i in range(1, len(r)): 
+        if r[i].find('Azure Sphere') > 0:
+            res = r[i].split(":")[0].strip()
+            print( res )
+            return res # 'Azure Sphere'
+    return None            
 
-
+isAzureSphereAdapter()
 t = WindowsTap('Tap')
-t.read()
+if None != t.create():
+    while 1:
+        t.read()
+        time.sleep(1)
+else:
+    print('DO REST API')
+t.close()
