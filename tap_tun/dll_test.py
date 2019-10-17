@@ -249,7 +249,7 @@ class WindowsTap(Tap):
         self.read_lock.acquire()
         result = None
         try:
-            err = ResetEvent(self.read_overlapped.hEvent) # If the function succeeds, the return value is nonzero. (TRUE)
+            err = ResetEvent(self.read_overlapped.hEvent) # ok (TRUE)
             if 0 == err: raise ctypes.WinError()
 
             rd = DWORD()
@@ -260,23 +260,37 @@ class WindowsTap(Tap):
                 2000, 
                 byref(rd), 
                 self.read_overlapped
-            ) # If the function succeeds, the return value is nonzero (TRUE).
-            print('ReadFile HANDLE =', self.handle, 'ERROR =', GetLastError())
-            if 0 == err: raise ctypes.WinError()
+            ) # ok (TRUE).
+            # print('ReadFile ERROR =', GetLastError())
             if GetLastError() == 997: # ERROR_IO_PENDING
-                err = GetOverlappedResult(self.handle, self.read_overlapped, True)
-                print('GetOverlappedResult', err)
-                result = bytes(buf[:n])
-            else:
-                result = bytes(buf)
+                n = DWORD()
+                err = GetOverlappedResult(self.handle, self.read_overlapped, byref(n), True)
+                if 0 == err: raise ctypes.WinError()
+                data = buf[:-1]
+                result = buf[:n.value]
+            elif err == 0:
+                result = buf
+            else: raise ctypes.WinError()
         finally:
             self.read_lock.release()
+        print('GetOverlappedResult', result)
         return result
 
     def close(self):
         err = ctypes.windll.kernel32.CloseHandle(self.handle)
         if 0 == err: raise ctypes.WinError()
         print('close', self.handle, err)
+
+
+class thRead(threading.Thread):
+    def __init__(self, t, s):
+        threading.Thread.__init__(self)
+        self.t = t
+        self.s = s
+    def run(self):
+        while 1:
+            buf = self.t.read() 
+            #slip.write(s, buf)       
 
 def isAzureSphereAdapter():
     r = str( subprocess.check_output("ipconfig/all", shell = True) )
@@ -292,12 +306,9 @@ def isAzureSphereAdapter():
 
 t = WindowsTap('Tap')
 if None != t.create():
-    '''
-    while 1:
-        t.read()
-        time.sleep(1)
-    '''
-    pass
+    s = None # start serial
+    r = thRead(t, s)
+    r.start()
 else:
     print('DO REST API')
-t.close()
+#t.close()
