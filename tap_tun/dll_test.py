@@ -5,13 +5,14 @@ from ctypes import wintypes
 
 hDll = ctypes.WinDLL ("kernel32.dll")
 
-GENERIC_READ  = 2147483648 
-GENERIC_WRITE = 1073741824 
-FILE_SHARE_READ = 1 
-FILE_SHARE_WRITE = 2 
-OPEN_EXISTING = 3
-FILE_ATTRIBUTE_SYSTEM = 4
-FILE_FLAG_OVERLAPPED = 1073741824
+GENERIC_READ            = 0x80000000
+GENERIC_WRITE           = 0x40000000
+
+FILE_SHARE_READ         = 1 
+FILE_SHARE_WRITE        = 2 
+OPEN_EXISTING           = 3
+FILE_ATTRIBUTE_SYSTEM   = 4
+FILE_FLAG_OVERLAPPED    = 0x40000000
 
 # Setup the DeviceIoControl function arguments and return type.
 # See ctypes documentation for details on how to call C functions from python, and why this is important.
@@ -32,10 +33,9 @@ ULONG_PTR = ULONG
 class _OVERLAPPED(Structure):
 #https://docs.microsoft.com/bg-bg/windows/win32/api/minwinbase/ns-minwinbase-overlapped    
     pass
-OVERLAPPED   = _OVERLAPPED
-LPOVERLAPPED = POINTER(_OVERLAPPED)
 
-class H_OVERLAPPED():         # ?????????
+
+class _OVERLAPPED(Structure):# ?????????
     _fields_ = [
         ("Internal",        ULONG_PTR),
         ("InternalHigh",    ULONG_PTR),
@@ -46,7 +46,10 @@ class H_OVERLAPPED():         # ?????????
     def __init__(self):
         self.Offset         =  0
         self.OffsetHigh     =  0
-        self.hEvent         = -1
+
+OVERLAPPED   = _OVERLAPPED
+LPOVERLAPPED = POINTER(_OVERLAPPED)
+
 
 _stdcall_libraries = {}
 _stdcall_libraries['kernel32'] = WinDLL('kernel32')
@@ -106,12 +109,11 @@ class WindowsTap(Tap):
         self.TAP_IOCTL_CONFIG_DHCP_SET_OPT      = self._TAP_CONTROL_CODE( 9, 0)
         self.TAP_IOCTL_CONFIG_TUN               = self._TAP_CONTROL_CODE(10, 0)
         self.read_overlapped                    = OVERLAPPED()
-        eventhandle                             = ctypes.windll.kernel32.CreateEventW(None, True, False, None)
-        self.read_overlapped.hEvent             = eventhandle
+        self.read_overlapped.hEvent             = ctypes.windll.kernel32.CreateEventW(None, True, False, None)
+        #print('read_overlapped.hEvent', self.read_overlapped.hEvent)
         self.write_overlapped                   = OVERLAPPED()
-        eventhandle                             = ctypes.windll.kernel32.CreateEventW(None, True, False, None)
-        self.write_overlapped.hEvent            = eventhandle
-        self.buffer                             = create_string_buffer(2000)   
+        self.write_overlapped.hEvent            = ctypes.windll.kernel32.CreateEventW(None, True, False, None)
+        #print('write_overlapped.hEvent', self.write_overlapped.hEvent) 
 
     def _CTL_CODE(self,device_type, function, method, access):
         return (device_type << 16) | (access << 14) | (function << 2) | method;
@@ -127,6 +129,7 @@ class WindowsTap(Tap):
         err = ctypes.windll.advapi32.RegOpenKeyExW( root, key, 0, KEY_READ, byref( val ) )
         if 0 == err: 
             return HKEY(val.value)
+        print('[ERROR] OpenKey', key)
         return None       
 
     def QueryValueString(self, hkey, name):
@@ -136,6 +139,7 @@ class WindowsTap(Tap):
         err = ctypes.windll.advapi32.RegQueryValueExW( hkey, name, 0, b'REG_SZ', cast(buf, LPBYTE), byref( lpcbData ) )
         if 0 == err:
             return buf[::2].decode().rstrip('\x00')
+        print('[ERROR] QueryValueString', name)
         return None
 
     def _get_device_guid(self):
@@ -168,7 +172,6 @@ class WindowsTap(Tap):
 
     def _getNameByMac(self, mac):
         result = str(subprocess.check_output("ipconfig/all", shell = True))#.decode().encode().decode()
-        #print(result)
         res = result.split("adapter")
         for i in range(1, len(res)):
             if res[i].find( self._mac2string(mac) ) > 0:
@@ -185,22 +188,22 @@ class WindowsTap(Tap):
             print('[ERROR] TAP not found')
             return None
         name = "\\\\.\\Global\\%s.tap"%guid
-        #print('FILE', name)
+        #print('FILE', name.encode())
         self.handle = ctypes.windll.kernel32.CreateFileA(
-            name.encode("ascii"),
+            name.encode(),
             GENERIC_READ | GENERIC_WRITE, 
-            0, 
-            None, 
-            OPEN_EXISTING, 
+            0,
+            None, OPEN_EXISTING, 
             FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED,
             None
         )        
-        if self.handle == -1: 
-            print('TAP_TUN_SLIP SERVICE')
+        if self.handle == -1: # INVALID_HANDLE_VALUE
+            print('TAP_TUN_SLIP SERVICE WORK')
             return None # [WinError 31] A device attached to the system is not functioning.
             raise ctypes.WinError()
+            return None
         if self.handle:
-            print('TAP HANDLE', self.handle)
+            print('TAP-TUN FILE HANDLE =', self.handle)
             return self
         return None
 
@@ -211,9 +214,9 @@ class WindowsTap(Tap):
         self.gateway = gateway
         try:
             input  = b'\x01\x00\x00\x00'
-            output = b'0'*512
-            res = wintypes.DWORD(0)
-            ctypes.windll.kernel32.DeviceIoControl(self.handle, self.TAP_IOCTL_SET_MEDIA_STATUS, input, 4, output, 512, ctypes.pointer(res), None)
+            output = create_string_buffer(512)
+            res = DWORD(0)
+            ctypes.windll.kernel32.DeviceIoControl(self.handle, self.TAP_IOCTL_SET_MEDIA_STATUS, input, 4, output, 512, byref(res), None)
             print('output', output)
             ipnet  = struct.pack("I",struct.unpack("I", socket.inet_aton(self.ip))[0]&struct.unpack("I", socket.inet_aton(self.mask))[0])
             ipcode = socket.inet_aton(self.ip) + ipnet + socket.inet_aton(self.mask)
@@ -221,9 +224,9 @@ class WindowsTap(Tap):
                 flag = self.TAP_IOCTL_CONFIG_POINT_TO_POINT
             if self.nic_type=="Tun":
                 flag =  self.TAP_IOCTL_CONFIG_TUN
-            ctypes.windll.kernel32.DeviceIoControl(self.handle, flag, ipcode, 16, None, 0, ctypes.pointer(res), None)
-            self.mac= b'0'*6
-            ctypes.windll.kernel32.DeviceIoControl(self.handle, self.TAP_IOCTL_GET_MAC, self.mac, 6, self.mac, 6, ctypes.pointer(res), None) # ???
+            ctypes.windll.kernel32.DeviceIoControl(self.handle, flag, ipcode, 16, None, 0, byref(res), None)
+            self.mac= create_string_buffer(6)
+            ctypes.windll.kernel32.DeviceIoControl(self.handle, self.TAP_IOCTL_GET_MAC, self.mac, 6, self.mac, 6, byref(res), None) # ???
             print('self.mac', self.mac)
             self.name = self._getNameByMac(self.mac)          
         except Exception as exp:
@@ -246,28 +249,38 @@ class WindowsTap(Tap):
         self.read_lock.acquire()
         result = None
         try:
-            ResetEvent(self.read_overlapped.hEvent)
+            err = ResetEvent(self.read_overlapped.hEvent) # If the function succeeds, the return value is nonzero. (TRUE)
+            if 0 == err: raise ctypes.WinError()
+
             rd = DWORD()
-            ReadFile(self.handle, self.buffer, 2000, byref(rd), self.read_overlapped)
-            print('READ', rd)
-            err = 0
-            if err == 997: # ERROR_IO_PENDING
-                n = GetOverlappedResult(self.handle, self.read_overlapped, True)
-                result = bytes(self.buffer[:n])
+            buf = create_string_buffer(2000)  
+            err = ReadFile(
+                self.handle, 
+                cast(buf, LPBYTE), 
+                2000, 
+                byref(rd), 
+                self.read_overlapped
+            ) # If the function succeeds, the return value is nonzero (TRUE).
+            print('ReadFile HANDLE =', self.handle, 'ERROR =', GetLastError())
+            if 0 == err: raise ctypes.WinError()
+            if GetLastError() == 997: # ERROR_IO_PENDING
+                err = GetOverlappedResult(self.handle, self.read_overlapped, True)
+                print('GetOverlappedResult', err)
+                result = bytes(buf[:n])
             else:
-                result = bytes(self.buffer)
+                result = bytes(buf)
         finally:
             self.read_lock.release()
         return result
 
     def close(self):
-        ctypes.windll.kernel32.CloseHandle(self.handle)
-
-#t = TunTap('Tap', 'Azure Sphere')
-#t.config("192.168.35.1","255.255.255.0")
+        err = ctypes.windll.kernel32.CloseHandle(self.handle)
+        if 0 == err: raise ctypes.WinError()
+        print('close', self.handle, err)
 
 def isAzureSphereAdapter():
     r = str( subprocess.check_output("ipconfig/all", shell = True) )
+    #print(r.split('\\r\\n'))
     r = r.split("adapter")
     for i in range(1, len(r)): 
         if r[i].find('Azure Sphere') > 0:
@@ -275,13 +288,16 @@ def isAzureSphereAdapter():
             print( res )
             return res # 'Azure Sphere'
     return None            
+#isAzureSphereAdapter()
 
-isAzureSphereAdapter()
 t = WindowsTap('Tap')
 if None != t.create():
+    '''
     while 1:
         t.read()
         time.sleep(1)
+    '''
+    pass
 else:
     print('DO REST API')
 t.close()
