@@ -69,20 +69,28 @@ class QDL:
     def write(self, command, buffer):
         print()
         tx = b'\x7E\x01' + struct.pack("<H", len(buffer) + 4) + b'\x4B\x3E' + struct.pack("<H", command) + buffer + b'\x7E'
-        print('[{:02X}] >>>'.format(command), hexs(tx))
+        if len(tx) > 64: print('[{:02X}] >>>'.format(command), hexs(tx[:64]), '...')
+        else: print('[{:02X}] >>>'.format(command), hexs(tx))
         return self.s.write(tx)
 
     def OpenFile(self, fileName, flag = 0, mode = 0):
-        q.write(kDiagEfsOpen, struct.pack("<I", flag) + struct.pack("<I", mode) + fileName ) #41 02 00 00 B6 01 00 00
+        q.write(kDiagEfsOpen, struct.pack("<I", flag) + struct.pack("<I", mode) + fileName ) # [41 02 00 00] [B6 01 00 00]
         q.read(kDiagEfsOpen)        
         pass
 
-    def WriteFile(self, fileNmae):
-        fd = open(fileNmae, 'rb')
+    def WriteFile(self, fileName): # 00 00 00 00 00 04 00 00
+        fd = open(fileName, 'rb')
+        page = 0
         data = 1
         while data: 
-            data = fd.read(0x400)
-            print('data', len(data), hexs(data))    
+            data = fd.read(1024)
+            if b'' == data: 
+                print('E O F')
+                break
+            #print('data', len(data), hexs(data))   
+            q.write(kDiagEfsWrite, struct.pack("<I", 0) + struct.pack("<I", page) + data ) # [00 00 00 00] [00 04 00 00]
+            q.read(kDiagEfsWrite)  
+            page += 1024            
         fd.close()    
 
     def CloseFile(self):
@@ -132,25 +140,15 @@ dir = os.path.dirname( sys.argv[0] )
 ser = Serial("COM9", 115200 )
 
 q = QDL(ser)
-q.WriteFile( join(dir,'image.png') )
-
-exit(0)
 q.connect()
 q.write(kDiagEfsOpenDir, b'/datatx\0')
 q.read(kDiagEfsOpenDir)
 
-#q.OpenFile(b'/datatx/TEST.txt\0')
-#q.CloseFile()
-
-
-
-#q.write(kDiagEfsReadDir, b'\x01\x00\x00\x00\x01\x00\x00\x00')
-#q.read(kDiagEfsReadDir)
-#q.write(kDiagEfsReadDir, b'\x01\x00\x00\x00\x02\x00\x00\x00')
-#q.read(kDiagEfsReadDir)
+q.OpenFile(b'/datatx/image.png\0', 0x241, 0x1B6)
+q.WriteFile( join(dir, 'image.png') )
+q.CloseFile()
 
 q.write(kDiagEfsCloseDir, b'\x01\x00\x00\x00')
 q.read(kDiagEfsCloseDir)
-
 
 ser.close()
