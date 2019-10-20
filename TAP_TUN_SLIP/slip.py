@@ -5,10 +5,10 @@
 import re
 import collections
 
-END = b'\xc0'
-ESC = b'\xdb'
-ESC_END = b'\xdc'
-ESC_ESC = b'\xdd'
+END     = b'\xc0'#192
+ESC     = b'\xdb'#219
+ESC_END = b'\xdc'#220
+ESC_ESC = b'\xdd'#221
 """These constants represent the special SLIP bytes"""
 
 

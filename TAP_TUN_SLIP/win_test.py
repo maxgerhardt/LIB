@@ -1,6 +1,6 @@
 ############################################################################
 #   Dependency:
-#       Windows TAP Driver tap0901
+#       Windows: TAP Driver tap0901 - TAP-Windows Adapter V9
 #       pySerial
 ############################################################################
 
@@ -113,11 +113,11 @@ class WindowsTap(Tap):
         self.TAP_IOCTL_GET_MTU                  = self._TAP_CONTROL_CODE( 3, 0)
         self.TAP_IOCTL_GET_INFO                 = self._TAP_CONTROL_CODE( 4, 0)
         self.TAP_IOCTL_CONFIG_POINT_TO_POINT    = self._TAP_CONTROL_CODE( 5, 0)
-        self.TAP_IOCTL_SET_MEDIA_STATUS         = self._TAP_CONTROL_CODE( 6, 0)
+        self.TAP_IOCTL_SET_MEDIA_STATUS         = self._TAP_CONTROL_CODE( 6, 0)#
         self.TAP_IOCTL_CONFIG_DHCP_MASQ         = self._TAP_CONTROL_CODE( 7, 0)
         self.TAP_IOCTL_GET_LOG_LINE             = self._TAP_CONTROL_CODE( 8, 0)
         self.TAP_IOCTL_CONFIG_DHCP_SET_OPT      = self._TAP_CONTROL_CODE( 9, 0)
-        self.TAP_IOCTL_CONFIG_TUN               = self._TAP_CONTROL_CODE(10, 0)
+        self.TAP_IOCTL_CONFIG_TUN               = self._TAP_CONTROL_CODE(10, 0)#
         self.read_overlapped                    = OVERLAPPED()
         self.read_overlapped.hEvent             = ctypes.windll.kernel32.CreateEventW(None, True, False, None)
         self.write_overlapped                   = OVERLAPPED()
@@ -194,12 +194,12 @@ class WindowsTap(Tap):
             print('[ERROR] TAP not found')
             return None
         name = "\\\\.\\Global\\%s.tap"%guid
-        #print('FILE', name.encode())
         self.handle = ctypes.windll.kernel32.CreateFileA(
             name.encode(),
             GENERIC_READ | GENERIC_WRITE, 
-            0,
-            None, OPEN_EXISTING, 
+            FILE_SHARE_READ | FILE_SHARE_WRITE, 
+            None, 
+            OPEN_EXISTING, 
             FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED,
             None
         )        
@@ -213,16 +213,15 @@ class WindowsTap(Tap):
             return self
         return None
 
-
     def config(self, ip, mask, gateway = "0.0.0.0"):
         self.ip = ip
         self.mask = mask
         self.gateway = gateway
         try:
-            input  = b'\x01\x00\x00\x00'
-            output = create_string_buffer(512)
+            input  = b'\x01\x00\x00\x00' # true
+            output = create_string_buffer(4)
             res = DWORD(0)
-            ctypes.windll.kernel32.DeviceIoControl(self.handle, self.TAP_IOCTL_SET_MEDIA_STATUS, input, 4, output, 512, byref(res), None)
+            ctypes.windll.kernel32.DeviceIoControl(self.handle, self.TAP_IOCTL_SET_MEDIA_STATUS, input, 4, output, 4, byref(res), None)
             print('output', output)
             ipnet  = struct.pack("I",struct.unpack("I", socket.inet_aton(self.ip))[0]&struct.unpack("I", socket.inet_aton(self.mask))[0])
             ipcode = socket.inet_aton(self.ip) + ipnet + socket.inet_aton(self.mask)
@@ -251,38 +250,52 @@ class WindowsTap(Tap):
             sargs = sargs.replace("GATEWAY", self.gateway)
         subprocess.check_call(sargs, shell = True)
 
-    def read(self):
+    def read(self): # return bufer
         self.read_lock.acquire()
-        result = None
+        RESULT = None
+        RD = DWORD()
         try:
             err = ResetEvent(self.read_overlapped.hEvent) # ok (TRUE)
             if 0 == err: raise ctypes.WinError()
-            rd = DWORD()
-            buf = create_string_buffer(2000)  
-            err = ReadFile(
-                self.handle, 
-                cast(buf, LPBYTE), 
-                2000, 
-                byref(rd), 
-                self.read_overlapped
-            ) # ok (TRUE).
-            # print('ReadFile ERROR =', GetLastError())
-            if GetLastError() == 997: # ERROR_IO_PENDING
-                n = DWORD()
-                err = GetOverlappedResult(self.handle, self.read_overlapped, byref(n), True)
+            BUFFER = create_string_buffer(2000)  
+            err = ReadFile(self.handle, cast(BUFFER, LPBYTE), 2000, byref(RD), self.read_overlapped) # ok (TRUE)
+            lastError = GetLastError()
+            # print('ReadFile() ERROR =', lastError)
+            if lastError == 997: # ERROR_IO_PENDING
+                err = GetOverlappedResult(self.handle, self.read_overlapped, byref(RD), True)
                 if 0 == err: raise ctypes.WinError()
-                data = buf[:-1]
-                result = buf[:n.value]
-            elif err == 0:
-                result = buf
+                RESULT = BUFFER[:RD.value]
+            elif lastError == 0:
+                RESULT = BUFFER
             else: raise ctypes.WinError()
         finally:
             self.read_lock.release()
-        #print('[T-READ]', PrintHex(result)) 
-        return result
+        #print('[T-READ]', PrintHex(RESULT)) 
+        return bytearray(RESULT)
 
-    def write(self):
-        pass
+    def write(self, data): # return writed data bytes
+        self.write_lock.acquire()
+        RESULT = 0
+        WR = DWORD()
+        LEN = len(data)
+        try:
+            if 0 == ResetEvent(self.write_overlapped.hEvent): raise ctypes.WinError()
+            if WriteFile(self.handle, data, LEN, byref(WR), self.write_overlapped): # ok (TRUE)
+                RESULT = WR
+            else:
+                lastError = GetLastError()
+                print('WriteFile() ERROR =', lastError)                
+                if 997 == lastError: # ERROR_IO_PENDING
+                    err = GetOverlappedResult(self.handle, self.read_overlapped, byref(WR), True)
+                    if 0 == err: raise ctypes.WinError()
+                    RESULT = WR
+                elif 0 == lastError:
+                    RESULT = LEN
+                else:
+                    raise ctypes.WinError()
+        finally:
+            self.write_lock.release()
+        return RESULT
 
     def close(self):
         err = ctypes.windll.kernel32.CloseHandle(self.handle)
@@ -292,11 +305,13 @@ class WindowsTap(Tap):
 
 
     def start(self, com_port):
-        self.serial = Serial(com_port, 921600) # 3000000 115200   
+        self.serial = Serial(com_port, 921600) #  115200  3000000 
+        #self.serial.dtr = 0
+        #self.serial.rts = 0         
+        print('CTS', self.serial.cts)
+        print('DSR', self.serial.dsr)
         self.serial.timeout = 0
-        #self.serial.rtscts = 1 # RequestToSend
-        #self.serial.dtr = 1
-        #self.serial.rts = 1 
+        self.serial.rtscts = True # RequestToSend
         self.isSRunnig = True
 
         self.SW = self.SlipWrite(self)
@@ -312,16 +327,20 @@ class WindowsTap(Tap):
             print('[SpipRead] BEGIN')
             slipDriver = slip.Driver()
             while self.this.isSRunnig:
-                packet = self.this.read() 
-                #print('[TX-READ]', PrintHex(packet)) # [FFFFFFFFFFFF][00FF9832CF41]0806000108000604000100FF9832CF41C0A82301000000000000C0A82302  
+                packet = self.this.read()  
                 macDst = packet[ : 6]
-                macSrc = packet[6:12]
+                macSrc = packet[6:12]             
                 if macDst == b'\xFF\xFF\xFF\xFF\xFF\xFF': # route ???
+                    packet[0] = 1
+                    packet[1] = 2
+                    packet[2] = 3
+                    packet[3] = 4
+                    packet[4] = 5
+                    packet[5] = 6
                     #print('[TX-MAC]', PrintHex(macDst), PrintHex(macSrc))
                     tx = slipDriver.send(packet)     # Package data in slip format
                     res = self.this.serial.write(tx) # Send data over serial port
-                    print('[TX-SLIP {}]'.format(res) + PrintHex(tx)) # C0FFFFFFFFFFFF00FF9832CF410806000108000604000100FF9832CF41DBDCA82301000000000000DBDCA82302C0
-
+                    print('[TX-SLIP {}] '.format(res) + PrintHex(tx)) # [TX-SLIP 46] C0FFFFFFFFFFFF00FF9832CF410806000108000604000100FF9832CF41DBDCA82301000000000000DBDCA82302C0
             print('[SpipRead] END')
 
     class SlipWrite(threading.Thread):
@@ -336,7 +355,8 @@ class WindowsTap(Tap):
                 if b'' != rx: # NO ANSWER YET ?!?! led blink
                     print('[AZURE SLIP ANSWER]', PrintHex(rx))
                     data = slipDriver.receive(rx) # A (possibly empty) list of decoded messages.   
-                                
+                    print(data) # []
+                    #self.this.write(data[])        
             print('[SpipWrite] END')           
 
 
@@ -355,7 +375,7 @@ def isAzureSphereAdapter():
 
 t = WindowsTap('Tap')
 if None != t.create():
-    t.start('COM25')
+    t.start('COM27')
 else:
     print('DO REST API')
 #t.close()
