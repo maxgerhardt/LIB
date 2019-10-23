@@ -1,7 +1,16 @@
 ############################################################################
+#   AZURE SPHERE UPLOADER 2019 WizIO
+############################################################################
+#   Windows 7,8,10 first, Unix-like next...
+#
 #   Dependency:
 #       Windows: TAP Driver tap0901 - TAP-Windows Adapter V9
 #       pySerial
+#
+#   Status: 
+#       route ARP, request/response mac address
+#   Next: 
+#       route IPv4 only between 192.168.35.1 and 2 
 ############################################################################
 
 import os, sys, struct, time, socket, threading, subprocess, logging, random
@@ -11,24 +20,26 @@ from ctypes import wintypes
 from serial import Serial
 from binascii import hexlify
 import slip
-############################################################################
-PYTHON2 = sys.version_info[0] < 3  # True if on pre-Python 3
 
+############################################################################
+
+PYTHON2 = sys.version_info[0] < 3  # True if on pre-Python 3
 def PrintHex(s):
     if False == PYTHON2: 
         if str == type(s):
             s = bytearray(s, 'utf-8')
     return hexlify(s).decode("ascii").upper()
+
 ############################################################################
 
-MY_MAC = b''
-MY_IP = b'\xC0\xA8\x23\x02'
-AZ_IP = b'\xC0\xA8\x23\x01'
+AZ_IP  = b'\xC0\xA8\x23\x01' # 192.168.35.1
+MY_IP  = b'\xC0\xA8\x23\x02' # 192.168.35.2
+MY_MAC = b'' # random
 
+############################################################################
 
 GENERIC_READ            = 0x80000000
 GENERIC_WRITE           = 0x40000000
-
 FILE_SHARE_READ         = 1 
 FILE_SHARE_WRITE        = 2 
 OPEN_EXISTING           = 3
@@ -50,8 +61,7 @@ ctypes.windll.kernel32.DeviceIoControl.argtypes = [
 ctypes.windll.kernel32.DeviceIoControl.restype = wintypes.BOOL
 
 ULONG_PTR = ULONG
-
-#https://docs.microsoft.com/bg-bg/windows/win32/api/minwinbase/ns-minwinbase-overlapped  
+ 
 class _OVERLAPPED(Structure):
     _fields_ = [
         ("Internal",        ULONG_PTR),
@@ -88,7 +98,7 @@ GetOverlappedResult = _stdcall_libraries['kernel32'].GetOverlappedResult
 GetOverlappedResult.restype = BOOL
 GetOverlappedResult.argtypes = [HANDLE, LPOVERLAPPED, LPDWORD, BOOL]
 
-
+# General class
 def TunTap(nic_type, nic_name = None):
     if not sys.platform.startswith("win"):
         tap = Tap(nic_type,nic_name) # Unix-Like
@@ -341,6 +351,8 @@ class WindowsTap(Tap):
 
     def start(self, com_port):
         global MY_MAC
+        # Need clear arp cache for device IP:192.168.35.2
+        # Serial is 'stoped' for now...
         #self.serial = Serial(com_port, 921600) #  115200  3000000 
         #self.serial.timeout = 0
         #self.serial.rtscts = True # RequestToSend
