@@ -1,9 +1,9 @@
 import struct, random
 from binascii import hexlify
 
-MY_MAC = b''
-MY_IP = b'\xC0\xA8\x23\x02'
 AZ_IP = b'\xC0\xA8\x23\x01'
+MY_IP = b'\xC0\xA8\x23\x02'
+MY_MAC = b''
 
 def HEX(s):
     return hexlify(s).decode("ascii").upper()
