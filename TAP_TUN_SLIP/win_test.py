@@ -4,7 +4,7 @@
 #       pySerial
 ############################################################################
 
-import os, sys, struct, time, socket, threading, subprocess, logging
+import os, sys, struct, time, socket, threading, subprocess, logging, random
 from ctypes import *
 from ctypes.wintypes import *
 from ctypes import wintypes
@@ -20,6 +20,10 @@ def PrintHex(s):
             s = bytearray(s, 'utf-8')
     return hexlify(s).decode("ascii").upper()
 ############################################################################
+
+MY_MAC = b''
+MY_IP = b'\xC0\xA8\x23\x02'
+AZ_IP = b'\xC0\xA8\x23\x01'
 
 
 GENERIC_READ            = 0x80000000
@@ -75,6 +79,10 @@ ResetEvent.argtypes = [HANDLE]
 ReadFile = _stdcall_libraries['kernel32'].ReadFile
 ReadFile.restype = BOOL
 ReadFile.argtypes = [HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED]
+
+WriteFile = _stdcall_libraries['kernel32'].WriteFile
+WriteFile.restype = BOOL
+WriteFile.argtypes = [HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED]
 
 GetOverlappedResult = _stdcall_libraries['kernel32'].GetOverlappedResult
 GetOverlappedResult.restype = BOOL
@@ -276,15 +284,17 @@ class WindowsTap(Tap):
     def write(self, data): # return writed data bytes
         self.write_lock.acquire()
         RESULT = 0
-        WR = DWORD()
         LEN = len(data)
+        BUFFER = create_string_buffer(LEN)
+        for i in range(LEN): BUFFER[i] = data[i]
+        WR = DWORD()
         try:
             if 0 == ResetEvent(self.write_overlapped.hEvent): raise ctypes.WinError()
-            if WriteFile(self.handle, data, LEN, byref(WR), self.write_overlapped): # ok (TRUE)
+            if WriteFile(self.handle, cast(BUFFER, LPBYTE), LEN, byref(WR), self.write_overlapped): # ok (TRUE)
                 RESULT = WR
             else:
                 lastError = GetLastError()
-                print('WriteFile() ERROR =', lastError)                
+                print('WriteFile()', lastError)                
                 if 997 == lastError: # ERROR_IO_PENDING
                     err = GetOverlappedResult(self.handle, self.read_overlapped, byref(WR), True)
                     if 0 == err: raise ctypes.WinError()
@@ -303,17 +313,40 @@ class WindowsTap(Tap):
         print('close', self.handle, err)
 
 
+    def isARP(self, packet):
+        global MY_MAC
+        packet = bytearray(packet)
+        if packet[12:14] == b'\x08\x06': # ARP
+            if packet[28:32] != AZ_IP: # is not 192.168.35.1
+                print('[REJECT] IS NOT 192.168.35.1', PrintHex(packet[28:32]) )
+                return
+            #print('from 192.168.35.1', PrintHex(packet[28:32]))
+            if packet[38:42] != MY_IP: # is not for me
+                print('[REJECT] IS NOT FOR ME', PrintHex(packet[38:42]) )
+                return
+            #print('for 192.168.35.2', PrintHex(packet[38:42]))
+            if packet[20:22] != b'\x00\x01': # is not request
+                print('[REJECT] IS NOT ARP REQUEST')
+                return                
+            print ( "ARP-REQUEST", PrintHex(MY_MAC))
+            print ( ">", PrintHex(packet))
+            packet[  : 6], packet[6:12] = packet[6:12], MY_MAC # swap eth mac
+            packet[20:22] = b'\x00\x02' # set response
+            packet[22:32], packet[32:42] = packet[32:42], packet[22:32] # swap arp
+            packet[22:28] = MY_MAC
+            print ( "<", PrintHex(packet))
+            return packet # response   
+        return   
+
 
     def start(self, com_port):
-        self.serial = Serial(com_port, 921600) #  115200  3000000 
-        #self.serial.dtr = 0
-        #self.serial.rts = 0         
-        print('CTS', self.serial.cts)
-        print('DSR', self.serial.dsr)
-        self.serial.timeout = 0
-        self.serial.rtscts = True # RequestToSend
+        global MY_MAC
+        #self.serial = Serial(com_port, 921600) #  115200  3000000 
+        #self.serial.timeout = 0
+        #self.serial.rtscts = True # RequestToSend
         self.isSRunnig = True
-
+        MY_MAC = struct.pack("<HI", 0xFF00, random.randint(1, 0xFFFFFFFE))
+        print('MY MAC', PrintHex(MY_MAC))
         self.SW = self.SlipWrite(self)
         self.SW.start()
         self.SR = self.SpipRead(self)
@@ -328,19 +361,17 @@ class WindowsTap(Tap):
             slipDriver = slip.Driver()
             while self.this.isSRunnig:
                 packet = self.this.read()  
-                macDst = packet[ : 6]
-                macSrc = packet[6:12]             
-                if macDst == b'\xFF\xFF\xFF\xFF\xFF\xFF': # route ???
-                    packet[0] = 1
-                    packet[1] = 2
-                    packet[2] = 3
-                    packet[3] = 4
-                    packet[4] = 5
-                    packet[5] = 6
-                    #print('[TX-MAC]', PrintHex(macDst), PrintHex(macSrc))
-                    tx = slipDriver.send(packet)     # Package data in slip format
-                    res = self.this.serial.write(tx) # Send data over serial port
-                    print('[TX-SLIP {}] '.format(res) + PrintHex(tx)) # [TX-SLIP 46] C0FFFFFFFFFFFF00FF9832CF410806000108000604000100FF9832CF41DBDCA82301000000000000DBDCA82302C0
+                print ( "R", PrintHex(packet))
+
+                # TEST ARP 0806
+                res = self.this.isARP(packet)
+                if res != None: 
+                    self.this.write(res) 
+                    continue
+                # TEST IPv4 8004
+
+                #tx = slipDriver.send(packet)     # Package data in slip format
+                #res = self.this.serial.write(tx) # Send data over serial port
             print('[SpipRead] END')
 
     class SlipWrite(threading.Thread):
@@ -351,7 +382,7 @@ class WindowsTap(Tap):
             print('[SpipWrite] BEGIN')
             slipDriver = slip.Driver()
             while self.this.isSRunnig: 
-                rx = self.this.serial.read(2000)
+                rx = b''#rx = self.this.serial.read(2000)
                 if b'' != rx: # NO ANSWER YET ?!?! led blink
                     print('[AZURE SLIP ANSWER]', PrintHex(rx))
                     data = slipDriver.receive(rx) # A (possibly empty) list of decoded messages.   
