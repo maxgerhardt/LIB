@@ -1,16 +1,7 @@
 ############################################################################
-#   AZURE SPHERE UPLOADER 2019 WizIO
-############################################################################
-#   Windows 7,8,10 first, Unix-like next...
-#
 #   Dependency:
 #       Windows: TAP Driver tap0901 - TAP-Windows Adapter V9
 #       pySerial
-#
-#   Status: 
-#       route ARP, request/response mac address
-#   Next: 
-#       route IPv4 only between 192.168.35.1 and 2 
 ############################################################################
 
 import os, sys, struct, time, socket, threading, subprocess, logging, random
@@ -20,26 +11,24 @@ from ctypes import wintypes
 from serial import Serial
 from binascii import hexlify
 import slip
-
 ############################################################################
-
 PYTHON2 = sys.version_info[0] < 3  # True if on pre-Python 3
+
 def PrintHex(s):
     if False == PYTHON2: 
         if str == type(s):
             s = bytearray(s, 'utf-8')
     return hexlify(s).decode("ascii").upper()
-
 ############################################################################
 
 AZ_IP  = b'\xC0\xA8\x23\x01' # 192.168.35.1
 MY_IP  = b'\xC0\xA8\x23\x02' # 192.168.35.2
-MY_MAC = b'\x11\x22\x33\x44' # const
+MY_MAC = b'\x00\xFF\x11\x22\x33\x44' # const
 
-############################################################################
 
 GENERIC_READ            = 0x80000000
 GENERIC_WRITE           = 0x40000000
+
 FILE_SHARE_READ         = 1 
 FILE_SHARE_WRITE        = 2 
 OPEN_EXISTING           = 3
@@ -61,7 +50,8 @@ ctypes.windll.kernel32.DeviceIoControl.argtypes = [
 ctypes.windll.kernel32.DeviceIoControl.restype = wintypes.BOOL
 
 ULONG_PTR = ULONG
- 
+
+#https://docs.microsoft.com/bg-bg/windows/win32/api/minwinbase/ns-minwinbase-overlapped  
 class _OVERLAPPED(Structure):
     _fields_ = [
         ("Internal",        ULONG_PTR),
@@ -98,7 +88,7 @@ GetOverlappedResult = _stdcall_libraries['kernel32'].GetOverlappedResult
 GetOverlappedResult.restype = BOOL
 GetOverlappedResult.argtypes = [HANDLE, LPOVERLAPPED, LPDWORD, BOOL]
 
-# General class
+
 def TunTap(nic_type, nic_name = None):
     if not sys.platform.startswith("win"):
         tap = Tap(nic_type,nic_name) # Unix-Like
@@ -325,16 +315,13 @@ class WindowsTap(Tap):
 
     def isARP(self, packet):
         global MY_MAC
-        packet = bytearray(packet)
         if packet[12:14] == b'\x08\x06': # ARP
-            if packet[28:32] != AZ_IP: # is not 192.168.35.1
+            if packet[28:32] != AZ_IP: # is not 192.168.35.1 ... allway is this
                 print('[REJECT] IS NOT 192.168.35.1', PrintHex(packet[28:32]) )
                 return
-            #print('from 192.168.35.1', PrintHex(packet[28:32]))
             if packet[38:42] != MY_IP: # is not for me
                 print('[REJECT] IS NOT FOR ME', PrintHex(packet[38:42]) )
                 return
-            #print('for 192.168.35.2', PrintHex(packet[38:42]))
             if packet[20:22] != b'\x00\x01': # is not request
                 print('[REJECT] IS NOT ARP REQUEST')
                 return                
@@ -348,10 +335,18 @@ class WindowsTap(Tap):
             return packet # response   
         return   
 
+    def isTCP(self, packet):
+        if packet[23] != 6: # IP=0800? TCP=6
+            print('[REJECT] IS NOT TCP', packet[23] )
+            return True
+        if packet[30:34] != MY_IP and packet[36:38] != b'\x01\xBB': # 192.168.35.2 : 443
+            print('[REJECT] IS NOT https://192.168.35.2:443', PrintHex(packet[30:34]), PrintHex(packet[36:38]) )
+            return True
+        print('[SRIP] NOW WRITE TO DEVICE') #[00FF11223344][00FF9832CF41][0800]450000340298400080[06]30D8[C0A82301][C0A82302]D9CA[01BB]37143D28000000008002200038000000020405B40103030201010402
+        return False
 
     def start(self, com_port):
         global MY_MAC
-        # Serial is 'stoped' for now...
         #self.serial = Serial(com_port, 921600) #  115200  3000000 
         #self.serial.timeout = 0
         #self.serial.rtscts = True # RequestToSend
@@ -371,17 +366,15 @@ class WindowsTap(Tap):
             print('[SpipRead] BEGIN')
             slipDriver = slip.Driver()
             while self.this.isSRunnig:
-                packet = self.this.read()  
-                print ( "R", PrintHex(packet))
-
-                # TEST ARP 0806
+                packet = bytearray( self.this.read() ) 
+                print ( "[R]", PrintHex(packet))
                 res = self.this.isARP(packet)
                 if res != None: 
-                    self.this.write(res) 
+                    self.this.write(res) # send to device 
                     continue
-                # TEST IPv4 8004
-
-                #tx = slipDriver.send(packet)     # Package data in slip format
+                if self.this.isTCP(packet): 
+                    continue
+                tx = slipDriver.send(packet)     # Package data in slip format
                 #res = self.this.serial.write(tx) # Send data over serial port
             print('[SpipRead] END')
 
