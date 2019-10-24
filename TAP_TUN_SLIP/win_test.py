@@ -34,7 +34,7 @@ def PrintHex(s):
 
 AZ_IP  = b'\xC0\xA8\x23\x01' # 192.168.35.1
 MY_IP  = b'\xC0\xA8\x23\x02' # 192.168.35.2
-MY_MAC = b'' # random
+MY_MAC = b'\x11\x22\x33\x44' # const
 
 ############################################################################
 
@@ -351,13 +351,12 @@ class WindowsTap(Tap):
 
     def start(self, com_port):
         global MY_MAC
-        # Need clear arp cache for device IP:192.168.35.2
         # Serial is 'stoped' for now...
         #self.serial = Serial(com_port, 921600) #  115200  3000000 
         #self.serial.timeout = 0
         #self.serial.rtscts = True # RequestToSend
         self.isSRunnig = True
-        MY_MAC = struct.pack("<HI", 0xFF00, random.randint(1, 0xFFFFFFFE))
+        #MY_MAC = struct.pack("<HI", 0xFF00, random.randint(1, 0xFFFFFFFE))
         print('MY MAC', PrintHex(MY_MAC))
         self.SW = self.SlipWrite(self)
         self.SW.start()
