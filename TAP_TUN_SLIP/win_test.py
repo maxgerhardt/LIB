@@ -260,7 +260,7 @@ class WindowsTap(Tap):
 
     def read(self): # return bufer
         self.read_lock.acquire()
-        RESULT = None
+        RESULT = b''
         RD = DWORD()
         try:
             err = ResetEvent(self.read_overlapped.hEvent) # ok (TRUE)
@@ -275,7 +275,9 @@ class WindowsTap(Tap):
                 RESULT = BUFFER[:RD.value]
             elif lastError == 0:
                 RESULT = BUFFER
-            else: raise ctypes.WinError()
+            else: 
+                print('Service is started')
+                #raise ctypes.WinError()
         finally:
             self.read_lock.release()
         #print('[T-READ]', PrintHex(RESULT)) 
@@ -336,13 +338,17 @@ class WindowsTap(Tap):
         return   
 
     def isTCP(self, packet):
+        if len(packet) < 38: 
+            #print('[REJECT] TOO SHORT')
+            return True
         if packet[23] != 6: # IP=0800? TCP=6
             print('[REJECT] IS NOT TCP', packet[23] )
             return True
         if packet[30:34] != MY_IP and packet[36:38] != b'\x01\xBB': # 192.168.35.2 : 443
             print('[REJECT] IS NOT https://192.168.35.2:443', PrintHex(packet[30:34]), PrintHex(packet[36:38]) )
             return True
-        print('[SRIP] NOW WRITE TO DEVICE') #[00FF11223344][00FF9832CF41][0800]450000340298400080[06]30D8[C0A82301][C0A82302]D9CA[01BB]37143D28000000008002200038000000020405B40103030201010402
+        print('[SRIP] NOW WRITE TO DEVICE') 
+        #[00FF11223344][00FF9832CF41][0800]450000340298400080[06]30D8[C0A82301][C0A82302]D9CA[01BB]37143D28000000008002200038000000020405B40103030201010402
         return False
 
     def start(self, com_port):
@@ -367,6 +373,9 @@ class WindowsTap(Tap):
             slipDriver = slip.Driver()
             while self.this.isSRunnig:
                 packet = bytearray( self.this.read() ) 
+                if 0 == len(packet):
+                    time.sleep(1)
+                    continue
                 print ( "[R]", PrintHex(packet))
                 res = self.this.isARP(packet)
                 if res != None: 
