@@ -10,7 +10,8 @@ from ctypes.wintypes import *
 from ctypes import wintypes
 from serial import Serial
 from binascii import hexlify
-import slip
+import slip 
+from rest_api import Azure
 ############################################################################
 PYTHON2 = sys.version_info[0] < 3  # True if on pre-Python 3
 
@@ -24,6 +25,7 @@ def PrintHex(s):
 AZ_IP  = b'\xC0\xA8\x23\x01' # 192.168.35.1
 MY_IP  = b'\xC0\xA8\x23\x02' # 192.168.35.2
 MY_MAC = b'\x00\xFF\x11\x22\x33\x44' # const
+AZ_MAC = b'' # unknow
 
 
 GENERIC_READ            = 0x80000000
@@ -244,6 +246,13 @@ class WindowsTap(Tap):
             sargs = sargs.replace("GATEWAY", self.gateway)
         subprocess.check_call(sargs, shell = True)
 
+    def close(self):
+        ctypes.windll.kernel32.CloseHandle(self.read_overlapped)
+        ctypes.windll.kernel32.CloseHandle(self.write_overlapped)
+        err = ctypes.windll.kernel32.CloseHandle(self.handle)
+        if 0 == err: raise ctypes.WinError()
+        print('close', self.handle, err)
+
     def read(self): # return bufer
         self.read_lock.acquire()
         RESULT = b''
@@ -254,24 +263,23 @@ class WindowsTap(Tap):
             BUFFER = create_string_buffer(2000)  
             err = ReadFile(self.handle, cast(BUFFER, LPBYTE), 2000, byref(RD), self.read_overlapped) # OK (TRUE)
             lastError = GetLastError()
-            # print('ReadFile() ERROR =', lastError)
             if lastError == 997: # ERROR_IO_PENDING
                 err = GetOverlappedResult(self.handle, self.read_overlapped, byref(RD), True)
                 if 0 == err: raise ctypes.WinError()
                 RESULT = BUFFER[:RD.value]
             elif lastError == 0:
                 RESULT = BUFFER
+            elif lastError == 995:
+                print('[ERROR] MEDIA IS NOT CONNECTED')
+                exit(1)
             else: 
-                print('ReadFile()', 'H = {}, E = {}'.format(self.handle, lastError) ) # CONNECT MEDIA
-                # I/O operations that are canceled complete with the error ERROR_OPERATION_ABORTED ???
-                time.sleep(1)
-                #raise ctypes.WinError()
+                print('ReadFile()', 'H = {}, E = {}'.format(self.handle, lastError) )
+                raise ctypes.WinError()
         finally:
-            self.read_lock.release()
-        #print('[TAP-READ]', PrintHex(RESULT)) 
+            self.read_lock.release() 
         return bytearray(RESULT)
 
-    def write(self, data): # return writed data bytes
+    def write(self, data): # return writed data size
         self.write_lock.acquire()
         RESULT = 0
         LEN = len(data)
@@ -283,32 +291,25 @@ class WindowsTap(Tap):
             if WriteFile(self.handle, cast(BUFFER, LPBYTE), LEN, byref(WR), self.write_overlapped): # OK (TRUE)
                 RESULT = WR
             else:
-                lastError = GetLastError()
-                print('WriteFile()', lastError)                
+                lastError = GetLastError()               
                 if 997 == lastError: # ERROR_IO_PENDING
                     err = GetOverlappedResult(self.handle, self.write_overlapped, byref(WR), True)
                     if 0 == err: raise ctypes.WinError()
                     RESULT = WR
                 elif 0 == lastError:
                     RESULT = LEN
+                elif 995 == lastError:
+                    print('[ERROR] MEDIA IS NOT CONNECTED')
+                    exit(1)                    
                 else:
                     print('WriteFile()', 'H = {}, E = {}'.format(self.handle, lastError) )
-                    time.sleep(1)
                     raise ctypes.WinError()
         finally:
             self.write_lock.release()
         return RESULT
 
-    def close(self):
-        ctypes.windll.kernel32.CloseHandle(self.read_overlapped)
-        ctypes.windll.kernel32.CloseHandle(self.write_overlapped)
-        err = ctypes.windll.kernel32.CloseHandle(self.handle)
-        if 0 == err: raise ctypes.WinError()
-        print('close', self.handle, err)
-
-
     def try_route(self, packet):
-        global MY_MAC
+        global MY_MAC, AZ_MAC
         if packet[12:14] == b'\x08\x06': # ARP
             if packet[28:32] != AZ_IP: # is not 192.168.35.1 ... allway is this
                 print('[REJECT] IS NOT 192.168.35.1', PrintHex(packet[28:32]) )
@@ -319,34 +320,22 @@ class WindowsTap(Tap):
             if packet[20:22] != b'\x00\x01': # is not request
                 print('[REJECT] IS NOT ARP REQUEST')
                 return                
+            if AZ_MAC == b'':
+                AZ_MAC =packet[6:12]
+                print('DRIVER MAC ADDRESS', PrintHex(AZ_MAC))
             print ( "ARP-REQUEST", PrintHex(MY_MAC))
-            print ( ">", PrintHex(packet))
+            ###print ( "-->", PrintHex(packet))
             packet[  : 6], packet[6:12] = packet[6:12], MY_MAC # swap eth mac
             packet[20:22] = b'\x00\x02' # set response
             packet[22:32], packet[32:42] = packet[32:42], packet[22:32] # swap arp
             packet[22:28] = MY_MAC
-            print ( "<", PrintHex(packet))
+            ###print ( "<--", PrintHex(packet))
             self.write(packet) # send ARP answer 
             return
-
         if packet[12:14] == b'\x08\x00' and packet[23] == 6: # IP/TCP
-            if packet[30:34] == MY_IP and packet[36:38] == b'\x01\xBB': # 192.168.35.2 : 443
-                #print('[ROUTE] NOW WRITE TO DEVICE')     
-                #[00FF11223344][00FF9832CF41][0800]450000340298400080[06]30D8[C0A82301][C0A82302]D9CA[01BB]37143D28000000008002200038000000020405B40103030201010402  
-                return packet 
-
-    def start(self, com_port):
-        global MY_MAC
-        self.serial = Serial(com_port, 921600) #  115200 3000000   
-        self.serial.timeout = 0
-        self.serial.rtscts = True # RequestToSend
-        self.isSRunnig = True
-        print('DEVICE MAC ADDRESS', PrintHex(MY_MAC))
-        self.SW = self.SlipWrite(self)
-        self.SW.start()
-        self.SR = self.SpipRead(self)
-        self.SR.start()
-        #wait result
+            if packet[30:34] == MY_IP and packet[36:38] == b'\x01\xBB': # https://192.168.35.2:443    
+                #[00FF11223344][00FF9832CF41][0800]-->450000340298400080[06]30D8[C0A82301][C0A82302]D9CA[01BB]3714....  
+                return packet[14:] # skip ethernet
 
     class SpipRead(threading.Thread):
         def __init__(self, this):
@@ -357,15 +346,17 @@ class WindowsTap(Tap):
             slipDriver = slip.Driver()
             while self.this.isSRunnig:
                 packet = bytearray( self.this.read() ) 
-                if 0 == len(packet):
+                if 0 == len(packet): # ERR 995
                     time.sleep(1)
                     continue
                 #print ( "[SpipRead]", PrintHex(packet))
-                if None == self.this.try_route(packet): continue  
-                s = slipDriver.send(packet)     
+                p = self.this.try_route(packet)
+                if None == p: continue  
+                s = slipDriver.send(p)     
                 self.this.serial.write(s)   
-                print ( "[SERIAL] >>>", PrintHex(s))                    
+                ###print ( "[SERIAL-PC] >>>", PrintHex(s))                    
             print('[SpipRead] END')
+            self.this.isSRunnig == False
 
     class SlipWrite(threading.Thread):
         def __init__(self, this):
@@ -375,31 +366,39 @@ class WindowsTap(Tap):
             print('[SpipWrite] BEGIN')
             slipDriver = slip.Driver()
             while self.this.isSRunnig: 
-                rx = b''#rx = self.this.serial.read(2000)
-                if b'' != rx: # NO ANSWER YET ?!?! led blink
-                    print('[AZURE SLIP ANSWER]', PrintHex(rx))
-                    data = slipDriver.receive(rx) # A (possibly empty) list of decoded messages.   
-                    print(data) # []
-                    #self.this.write(data[])        
-            print('[SpipWrite] END')           
+                rx = bytearray(self.this.serial.read(2000) )
+                if b'' != rx: 
+                    data = slipDriver.receive(rx) # A (possibly empty) list of decoded messages.    
+                    for tx in data:
+                        ###print('[SERIAL-AZ] <<<', PrintHex(tx))
+                        tx = AZ_MAC + MY_MAC + b'\x08\x00' + tx
+                        self.this.write(tx)                                
+            print('[SpipWrite] END') 
+            self.this.isSRunnig == False          
 
-
-######################################################################
-def isAzureSphereAdapter():
-    r = str( subprocess.check_output("ipconfig/all", shell = True) )
-    #print(r.split('\\r\\n'))
-    r = r.split("adapter")
-    for i in range(1, len(r)): 
-        if r[i].find('Azure Sphere') > 0:
-            res = r[i].split(":")[0].strip()
-            print( res )
-            return res # 'Azure Sphere'
-    return None            
-######################################################################
+    def start(self, com_port):
+        global MY_MAC
+        self.serial = Serial(com_port, 921600) #  115200 3000000   
+        self.serial.timeout = 0
+        self.serial.rtscts = True # RequestToSend
+        print('DEVICE MAC ADDRESS', PrintHex(MY_MAC))
+        self.isSRunnig = True
+        self.SW = self.SlipWrite(self)        
+        self.SR = self.SpipRead(self)
+        self.SR.start()
+        self.SW.start()
+        time.sleep(0.1)
+        if False == self.isSRunnig:
+            print('[ERROR] START')
+            exit(1)
+        print('--------------AZSPHERE--------------')
+        a = Azure()
+        a.get_dev_status()
+        a.get_dev_id()        
+        print('----------------DONE----------------')
+        exit(0)
 
 t = WindowsTap('Tap')
 if None != t.create():
-    t.start('COM24')
-else:
-    print('DO REST API')
+    t.start('COM27')
 #t.close()

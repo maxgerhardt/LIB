@@ -1,18 +1,23 @@
+############################################################################
 # THE PROJECT IS IN PROGRESS...
-
+#
+#   Dependency:
+#       requests
+#
 # https://requests.kennethreitz.org/en/master/user/advanced/
 # https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
+############################################################################
+
 from __future__ import print_function
-import os, urllib3, time, requests
+import os, time, requests, urllib3
 urllib3.disable_warnings()
 from os.path import join
-from colorama import Fore
 
 DEBUG           = True
 TEST_IMAGE      = '1640b7fb-4924-46df-ae72-38998065455b'
 
 def ERROR(message):
-    print(Fore.RED+"[ERROR] {}".format(message)+Fore.RESET )
+    print("[ERROR] {}".format(message))
     time.sleep(0.05)
     exit(1)
 
@@ -29,13 +34,13 @@ class Azure:
 
     def GET(self, URL, debug = DEBUG):
         if debug:
-            print( Fore.BLUE + '[GET] ' + URL + Fore.RESET )         
+            print( '[GET] ' + URL )         
         r = self.ses.get(URL, cert=self.cert, verify=False)
         ASSERT( 200 == r.status_code, "[GET] Response Code: {}".format( r.status_code ) )    
         if debug:
-            print( Fore.BLUE + '[RESPONSE] ', end='' )
+            print( '[RESPONSE] ', end='' )
             print( r.text.encode(encoding='UTF-8', errors='replace'), end='' )
-            print( Fore.RESET )
+            print(  )
             #time.sleep(0.01)
         return r.text         
 
@@ -65,9 +70,7 @@ class Azure:
         return r.text         
 
 
-a = Azure()
-
-a.get_dev_status()
-a.get_dev_id()
-
-a.get_app_status() 
+#a = Azure()
+#a.get_dev_status()
+#a.get_dev_id()
+#a.get_app_status() 
