@@ -205,7 +205,7 @@ class WindowsTap(Tap):
             raise ctypes.WinError()
             return None
         if self.handle:
-            print('TAP-TUN FILE HANDLE =', self.handle)
+            #print('TAP-TUN FILE HANDLE =', self.handle)
             return self
         return None
 
@@ -322,8 +322,8 @@ class WindowsTap(Tap):
                 return                
             if AZ_MAC == b'':
                 AZ_MAC =packet[6:12]
-                print('DRIVER MAC ADDRESS', PrintHex(AZ_MAC))
-            print ( "ARP-REQUEST", PrintHex(MY_MAC))
+                #print('DRIVER MAC ADDRESS', PrintHex(AZ_MAC))
+            #print ( "ARP-REQUEST", PrintHex(MY_MAC))
             ###print ( "-->", PrintHex(packet))
             packet[  : 6], packet[6:12] = packet[6:12], MY_MAC # swap eth mac
             packet[20:22] = b'\x00\x02' # set response
@@ -342,7 +342,7 @@ class WindowsTap(Tap):
             threading.Thread.__init__(self)
             self.this = this
         def run(self):
-            print('[SpipRead] BEGIN')
+            #print('[SpipRead] BEGIN')
             slipDriver = slip.Driver()
             while self.this.isSRunnig:
                 packet = bytearray( self.this.read() ) 
@@ -363,7 +363,7 @@ class WindowsTap(Tap):
             threading.Thread.__init__(self)
             self.this = this
         def run(self):
-            print('[SpipWrite] BEGIN')
+            #print('[SpipWrite] BEGIN')
             slipDriver = slip.Driver()
             while self.this.isSRunnig: 
                 rx = bytearray(self.this.serial.read(2000) )
@@ -381,7 +381,7 @@ class WindowsTap(Tap):
         self.serial = Serial(com_port, 921600) #  115200 3000000   
         self.serial.timeout = 0
         self.serial.rtscts = True # RequestToSend
-        print('DEVICE MAC ADDRESS', PrintHex(MY_MAC))
+        #print('DEVICE MAC ADDRESS', PrintHex(MY_MAC))
         self.isSRunnig = True
         self.SW = self.SlipWrite(self)        
         self.SR = self.SpipRead(self)
