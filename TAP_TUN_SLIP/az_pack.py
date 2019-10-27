@@ -1,3 +1,5 @@
+# AZSPHERE PACK IMAGE
+
 import os, sys, struct, time, threading, subprocess, logging, random
 from os.path import join
 from binascii import hexlify
@@ -35,6 +37,8 @@ DEFAULT_FILE_PERM = 420 # 0x01A4
 
 PAGE_SIZE = 4096
 
+nodes = []
+
 def roundUp4(num): return num + 3 & -4;
 
 def header(size = 0, count = 0):
@@ -50,8 +54,17 @@ def header(size = 0, count = 0):
     bin += bytearray("Compressed\0\0\0\0\0\0".encode('utf-8'))  # offset[48:64]
     return bin
 
-def inode(node):
-    pass
+def set_nodes(img):
+    bin = bytearray()
+    for n in nodes:
+        bin += struct.pack("H", n.mode)                          # offset[0]
+        bin += struct.pack("H", n.uid)                           # offset[2]
+        bin += struct.pack("B", n.data_size & 0xFF)              # offset[4]
+        bin += struct.pack("B", (n.data_size >>  8) & 0xFF)      # offset[5]
+        bin += struct.pack("B", (n.data_size >> 16) & 0xFF)      # offset[6]
+        bin += struct.pack("B", n.gid)                           # offset[7] 
+        # ... other
+    img[ 64 : 64 + len(bin)] = bin
 
 class aNODE():
     def __init__(self, path, offset):
@@ -101,7 +114,7 @@ class aNODE():
         
 
 path = './approot' 
-nodes = []
+
 offset = 0
 for root, dirs, files in os.walk(path):
     path = root.split(os.sep)
@@ -122,14 +135,15 @@ print('TOTAL SIZE', hex(total_size))
 
 for n in nodes: img += n.image # pack images
 
-for n in nodes: inode(n)
+set_nodes(img)
 
 img[ 4: 8] = struct.pack("I", total_size)  
 img[44:48] = struct.pack("I", len(nodes)) 
 img[32:36] = struct.pack("I", 0xFFFFFFFF) # CRC(3988292384)   
 
-print('TOTAL SIZE', hex(len(img)))
+# sign(img)
 
+print('TOTAL SIZE', hex(len(img)))
 f = open('./image.bin','wb') 
 f.write(img) 
 f.close()
