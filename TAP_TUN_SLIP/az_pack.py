@@ -1,6 +1,6 @@
 # AZSPHERE PACK IMAGE
 
-import os, sys, struct, time, threading, subprocess, logging, random
+import os, sys, struct, time, threading, subprocess, binascii, random
 from os.path import join
 from binascii import hexlify
 
@@ -39,6 +39,7 @@ PAGE_SIZE = 4096
 
 nodes = []
 
+
 def roundUp4(num): return num + 3 & -4;
 
 def header(size = 0, count = 0):
@@ -57,13 +58,36 @@ def header(size = 0, count = 0):
 def set_nodes(img):
     bin = bytearray()
     for n in nodes:
-        bin += struct.pack("H", n.mode)                          # offset[0]
-        bin += struct.pack("H", n.uid)                           # offset[2]
-        bin += struct.pack("B", n.data_size & 0xFF)              # offset[4]
-        bin += struct.pack("B", (n.data_size >>  8) & 0xFF)      # offset[5]
-        bin += struct.pack("B", (n.data_size >> 16) & 0xFF)      # offset[6]
-        bin += struct.pack("B", n.gid)                           # offset[7] 
-        # ... other
+        bin += struct.pack("H",  n.mode)            # [0,1]
+        bin += struct.pack("H",  n.uid)             # [2,3] = 0
+        bin += struct.pack("L",  n.file_size)[:3]   # [4,5,6]
+
+        if n.gid > 255:
+            print('[ERROR] GID is too large from 8 bits')
+            exit(1)
+
+        bin += struct.pack("B", n.gid)              # [7] = 0
+
+        name_len = roundUp4( len( n.name) )
+
+        x_1 = name_len >> 2
+        if x_1 > 63:
+            print('[ERROR] File name is too large')
+            exit(1)
+        x_2 = n.offset >> 2
+        
+        x_8 = (( x_2 & 3 ) << 6) | (( x_1 >> 4 ) << 4) | ( x_1 & 15 ) 
+        bin += struct.pack("B", x_8  & 0xFF)        # [8] ??? wrong for root
+
+        x_9 = x_2 >> 2
+        bin += struct.pack("L", x_9)[:3]            # [9,10,11]
+
+        if not n.root:
+            name = bytearray(n.name.encode('utf-8'))   
+            x = name_len - len(n.name) 
+            name += x * b'\0'
+            bin += name
+
     img[ 64 : 64 + len(bin)] = bin
 
 class aNODE():
@@ -74,10 +98,11 @@ class aNODE():
         self.name_size_up = roundUp4( len(self.name) )
         self.path = '/'.join(path)
         #print('PATH:', self.path)
-        print('offst:', hex(offset))
+        #print('offst:', hex(offset))
 
+        self.root = False
         self.uid = 0 # ???
-        self.gid = 0 # ???
+
         self.file_size = 0
         self.data_size = 0
         self.offset = 0
@@ -86,7 +111,9 @@ class aNODE():
 
         if 1 == len(path):
             print('IS-ROOT:', self.name)
-            self.offset = 0
+            self.root = True
+            self.gid = 0 # ???
+            self.offset = 64
             self.data_size = PAGE_SIZE
             self.image = header() 
             self.image += (PAGE_SIZE - 64) * b'\0'
@@ -94,21 +121,23 @@ class aNODE():
 
         elif os.path.isdir(self.path):    
             print('IS-DIR:', self.name)   
-            self.offset = offset # ???
+            self.offset = 0 # ???
+            self.gid = 0 # ???
                 
         elif os.path.isfile(self.path):
-           print('IS-FILE:', self.name)
-           self.file_size = os.path.getsize(self.path) 
-           self.data_size = ( int( self.file_size / PAGE_SIZE ) + 1 ) * PAGE_SIZE
-           #print('FSIZE:', hex(self.file_size))
-           f = open(self.path,'rb') 
-           self.image = f.read() 
-           f.close()
-           self.image += (self.data_size - self.file_size) * b'\0'
-           print('DSIZE:', hex(len(self.image)))
-           self.mode = DEFAULT_FILE_PERM | S_ISREG | S_ISVTX;
-           self.offset = offset
-           print('OFFST:', hex(self.offset))
+            self.gid = 0 # ???
+            print('IS-FILE:', self.name)
+            self.file_size = os.path.getsize(self.path) 
+            self.data_size = ( int( self.file_size / PAGE_SIZE ) + 1 ) * PAGE_SIZE
+            #print('FSIZE:', hex(self.file_size))
+            f = open(self.path,'rb') 
+            self.image = f.read() 
+            f.close()
+            self.image += (self.data_size - self.file_size) * b'\0'
+            print('DSIZE:', hex(len(self.image)))
+            self.mode = DEFAULT_FILE_PERM | S_ISREG | S_ISVTX;
+            self.offset = offset
+            print('OFFST:', hex(self.offset))
 
         self.image = bytearray(self.image)
         
@@ -139,7 +168,7 @@ set_nodes(img)
 
 img[ 4: 8] = struct.pack("I", total_size)  
 img[44:48] = struct.pack("I", len(nodes)) 
-img[32:36] = struct.pack("I", 0xFFFFFFFF) # CRC(3988292384)   
+img[32:36] = struct.pack("I", binascii.crc32(img)) # CRC(3988292384)  
 
 # sign(img)
 
