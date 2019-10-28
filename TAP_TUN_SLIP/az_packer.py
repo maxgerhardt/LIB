@@ -161,7 +161,8 @@ def write_image(name, image):
     f.write(image) 
     f.close()  
 
-# scan approot folder
+
+    
 img = bytearray()
 create_approot('.\\approot', img)
 update_header(img)
