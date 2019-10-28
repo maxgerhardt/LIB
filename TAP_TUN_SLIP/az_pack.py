@@ -1,4 +1,4 @@
-# AZSPHERE PACK IMAGE
+# NOT GOOD
 
 import os, sys, struct, time, threading, subprocess, binascii, random
 from os.path import join
