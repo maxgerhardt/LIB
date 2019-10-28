@@ -1,3 +1,5 @@
+# AZSPHERE IMAGE PACKER 2020 Georgi Angelov
+
 import os, sys, struct, binascii
 from os.path import join
 from binascii import hexlify
