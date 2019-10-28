@@ -109,7 +109,7 @@ class aNODE():
             self.type = NODE_FILE
 
             if self.name == 'app':
-                self.mode = 0x83ED # DEFAULT_FILE_PERM | S_ISREG | S_ISVTX ??????????? set as application
+                self.mode = 0x83ED # DEFAULT_FILE_PERM | S_ISREG | S_ISVTX # set as application
             else: 
                 self.mode = DEFAULT_FILE_PERM | S_ISREG | S_ISVTX
 
@@ -165,6 +165,7 @@ def write_image(name, image):
 img = bytearray()
 create_approot('.\\approot', img)
 update_header(img)
+#sign_image(img) ???????????
 write_image('.\\image.bin', img)
 
 
