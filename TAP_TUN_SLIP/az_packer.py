@@ -37,6 +37,10 @@ NODE_ROOT = 1
 NODE_DIR  = 2
 NODE_FILE = 3
 
+##################################################################################
+# IMAGE DATA
+##################################################################################
+
 nodes = []
 fs_info = bytearray()
 data_offset = PAGE_SIZE
@@ -161,12 +165,36 @@ def write_image(name, image):
     f.write(image) 
     f.close()  
 
+##################################################################################
+# META DATA
+##################################################################################
 
+SECT_Debug                  = 16964 # 0x4244
+SECT_LegacyABIDepends       = 17473 # 0x4441
+SECT_Identity               = 17481 # 0x4449
+SECT_ABIDepends             = 17486 # 0x444E
+SECT_Legacy                 = 18252 # 0x474C
+SECT_Signature              = 18259 # 0x4753
+SECT_Compression            = 19779 # 0x4D43
+SECT_RequiredFlashOffset    = 20306 # 0x4F52
+SECT_LegacyABIProvides      = 20545 # 0x5041
+SECT_ABIProvides            = 20558 # 0x504E
+SECT_TemporaryImage         = 20564 # 0x5054
+SECT_Revocation             = 22098 # 0x5652
+
+def get_sha256(data):
+    pass
+
+def create_meta_data(image):
+    image += struct.pack("I", 0x4D345834) 
+    #image += struct.pack("I", section_count)
     
+##################################################################################
+
 img = bytearray()
 create_approot('.\\approot', img)
 update_header(img)
-#sign_image(img) ???????????
+create_meta_data(img) # ???????????
 write_image('.\\image.bin', img)
 
 
