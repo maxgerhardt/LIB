@@ -25,14 +25,13 @@ AT tx_byte_pool_create DONE
 qapi_atfwd_Pass_Pool_Ptr DONE
 qapi_atfwd_reg  DONE
 atfwd_cmd_handler_cb is called, atcmd_name:[+QEXAMPLE] mask:[0]
-LOOP
 atfwd_cmd_handler_cb is called, is_reg:[1]
 Atcmd +QEXAMPLE is registered
-LOOP
-LOOP
-LOOP
-LOOP
-LOOP
-LOOP
+atfwd_cmd_handler_cb is called, atcmd_name:[+QEXAMPLE] mask:[1]
+atfwd_cmd_handler_cb is called, is_reg:[1]
+[+QEXAMPLE] send resp, ret = 0
+atfwd_cmd_handler_cb is called, atcmd_name:[+QEXAMPLE] mask:[5]
+atfwd_cmd_handler_cb is called, is_reg:[1]
+[+QEXAMPLE] send resp, ret = 0
 
 ```
