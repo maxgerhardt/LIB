@@ -1,9 +1,9 @@
 
-Firmware: BG96MAR03A03M1G
+Firmware: **BG96MAR03A03M1G_01.002.01.002**
 
-SDK: version325
+SDK: version **3.2.5**
 
-Log:
+Log
 
 ```
 RDY
