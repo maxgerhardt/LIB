@@ -49,7 +49,9 @@ uint32_t get_current(GPT_REGISTER_T *gpt)
 
 void start_us_timer(void)
 {
-    gpt_start_free_run_timer((GPT_REGISTER_T *)0xA21300D0, 0, 12u); // this timer is free for use,  used from Ql_Delay_us()
+    gpt_start_free_run_timer((GPT_REGISTER_T *)0xA21300D0, 0, 12u); 
+    // this timer is free for use,  used from Ql_Delay_us()
+    // and maybe is started by default
 }
 
 #define MICRO() ((GPT_REGISTER_T *)0xA21300D0)->GPT_COUNT
