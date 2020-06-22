@@ -1,7 +1,7 @@
 
 static uint32_t spi_transfer(spi_context *ctx, uint8_t *wr_buf, uint8_t *rd_buf, unsigned int size)
 {
-    if (spi_in_use(ctx) || 0 == size || NULL == wr_buf || NULL == rd_buf)
+    if (spi_in_use(ctx))
         return 0;
     if (size > SPI_MAX_PACKET_LENGTH)
         size = SPI_MAX_PACKET_LENGTH; // 1024
@@ -25,20 +25,17 @@ static uint32_t spi_transfer(spi_context *ctx, uint8_t *wr_buf, uint8_t *rd_buf,
 
 int SPI_Transfer(spi_context *ctx, uint8_t *wr_buf, uint8_t *rd_buf, uint16_t size)
 {
+    if (0 == size || NULL == wr_buf || NULL == rd_buf)
+        return 0;    
     int res, cnt = 0;
-    uint8_t *wr = wr_buf;
-    uint8_t *rd = rd_buf;
     while (size)
     {
-        res = spi_transfer(ctx, wr, rd, size);
+        if (0 == (res = spi_transfer(ctx, wr_buf, rd_buf, size)))
+            break;
         size -= res;
         cnt += res;
-        if (0 == res)
-            return cnt;
-        if (wr_buf)
-            wr += res;
-        if (rd_buf)
-            rd += res;
+        wr_buf += res;
+        rd_buf += res;
     }
     return cnt;
 }
