@@ -7,9 +7,9 @@
 
 #define DMA_CON_MASTER_RESERVED_0	(0)
 #define DMA_CON_MASTER_RESERVED_1	(1)
-#define DMA_CON_MASTER_MSDC		(2)
-#define DMA_CON_MASTER_SIM		(3)
-#define DMA_CON_MASTER_SIM2		(4)
+#define DMA_CON_MASTER_MSDC         (2)
+#define DMA_CON_MASTER_SIM          (3)
+#define DMA_CON_MASTER_SIM2         (4)
 #define DMA_CON_MASTER_USB1TX		(5)
 #define DMA_CON_MASTER_USB1RX		(6)
 #define DMA_CON_MASTER_USB2TX		(7)
@@ -133,6 +133,7 @@ typedef enum {
 #define IS_VFIFO_FULL(ch)           (DRV_Reg32(DMA_FFSTA(ch)) & DMA_FFSTA_FULL)
 #define DMA_EnableINT(ch)           DRV_Reg32(DMA_CON(ch)) |= DMA_CON_ITEN
 #define DMA_DisableINT(ch)          DRV_Reg32(DMA_CON(ch)) &= ~DMA_CON_ITEN
+
 #define DMA_TASK_PUSH(ch,data)      while(IS_VFIFO_FULL(ch)); \
                                         DMA_PUSH(ch,data)   
 
