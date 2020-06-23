@@ -1,15 +1,15 @@
 #ifndef _DMA_HW_H
 #define _DMA_HW_H
 
-#define DMA_MAX_CHANNEL             (8)
-#define DMA_MAX_FULL_CHANNEL        (1)
-#define DMA_FULL_CHANNEL_MASK       (0x00001)
+#define DMA_MAX_CHANNEL                 (8)
+#define DMA_MAX_FULL_CHANNEL            (1)
+#define DMA_FULL_CHANNEL_MASK           (0x00001)
 
 #define DMA_CON_MASTER_RESERVED_0	(0)
 #define DMA_CON_MASTER_RESERVED_1	(1)
-#define DMA_CON_MASTER_MSDC		    (2)
-#define DMA_CON_MASTER_SIM		    (3)
-#define DMA_CON_MASTER_SIM2		    (4)
+#define DMA_CON_MASTER_MSDC		(2)
+#define DMA_CON_MASTER_SIM		(3)
+#define DMA_CON_MASTER_SIM2		(4)
 #define DMA_CON_MASTER_USB1TX		(5)
 #define DMA_CON_MASTER_USB1RX		(6)
 #define DMA_CON_MASTER_USB2TX		(7)
@@ -24,11 +24,11 @@
 #define DMA_CON_MASTER_BTIFRX		(16)
 #define DMA_CON_MASTER_RESERVED_17	(17)
 
-#define DMA_VFIFO_CH_S               (9)  // start  of DMA Virtual fifo 
-#define DMA_VFIFO_CH_E               (16) // end of DMA Virtual fifo  
+#define DMA_VFIFO_CH_S                  (9)  // start  of DMA Virtual fifo 
+#define DMA_VFIFO_CH_E                  (16) // end of DMA Virtual fifo  
 
 typedef enum {
-	DMA_RESERVED_0,  // 0
+    DMA_RESERVED_0,  // 0
     DMA_RESERVED_1,  // 1
     DMA_MSDC,        // 2
     DMA_SIM,         // 3
@@ -36,13 +36,13 @@ typedef enum {
     DMA_USB1TX,      // 5
     DMA_USB1RX,      // 6
     DMA_USB2TX,      // 7
-	DMA_MSDC2,       // 8
-	DMA_UART1TX,     // 9
+    DMA_MSDC2,       // 8
+    DMA_UART1TX,     // 9
     DMA_UART1RX,     // 10
     DMA_UART2TX,     // 11
     DMA_UART2RX,     // 12
-	DMA_UART3TX,	 // 13
-	DMA_UART3RX,	 // 14
+    DMA_UART3TX,	 // 13
+    DMA_UART3RX,	 // 14
     DMA_BTIFRX,      // 15
     DMA_BTIFTX,      // 16
         DMA_SW,
@@ -91,10 +91,10 @@ typedef enum {
 #define DMA_CON_SINC                0x00000004
 #define DMA_CON_DINC                0x00000008
 #define DMA_CON_DRQ                 0x00000010  /* 1:hw, 0:sw */
-#define DMA_CON_ITEN				0x00008000	/* Interrupt enable */
-#define DMA_CON_WPSD				0x00010000  /* 0:at source, 1: at destination */
-#define DMA_CON_WPEN				0x00020000  /* 0:disable, 1: enable */
-#define DMA_CON_DIR				    0x00040000  /* Only valid when dma = 4~11 */
+#define DMA_CON_ITEN                0x00008000	/* Interrupt enable */
+#define DMA_CON_WPSD                0x00010000  /* 0:at source, 1: at destination */
+#define DMA_CON_WPEN                0x00020000  /* 0:disable, 1: enable */
+#define DMA_CON_DIR                 0x00040000  /* Only valid when dma = 4~11 */
 #define DMA_CON_RXCONTRL            (DMA_CON_DIR | DMA_CON_DINC) 
 #define DMA_CON_TXCONTRL            (DMA_CON_SINC) 
 #define DMA_CON_SWCOPY              (DMA_CON_SINC | DMA_CON_DINC) 
@@ -143,7 +143,5 @@ typedef enum {
 #define DMA_POWER_ON()              PDN_CLR(PDN_DMA)
 #define DMA_SLEEP_ENABLE()          PDN_SET(PDN_DMA)
 #define DMA_SLEEP_DISABLE()         PDN_CLR(PDN_DMA)
-
-
 
 #endif //_DMA_HW_H
