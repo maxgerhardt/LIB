@@ -1,10 +1,6 @@
 void HW_TDMA_Start(void)
 {
-   HW_WRITE(PDN_CLR2, PDN_CON_TDMA); /*power on TDMA*/
-    
-   /* Enable FRC for FM. */
-   //HW_WRITE( FRC_CON, (CMD_MAGIC_VALUE+0x00000001) );
-   //HW_WRITE( FM_CAL, 2 ); /*calibrate 2T 32K, ideal got 1586.9T 26M*/    
+   HW_WRITE(PDN_CLR2, PDN_CON_TDMA); /*power on TDMA*/   
 }
 
 void WAIT_TIME_QB( short time_qb )
