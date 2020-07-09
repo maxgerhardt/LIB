@@ -1,19 +1,18 @@
-void HW_TDMA_Start(void)
-{
-   HW_WRITE(PDN_CLR2, PDN_CON_TDMA); /*power on TDMA*/   
-}
-
-void WAIT_TIME_QB( short time_qb )
-{
-   unsigned short  last_qb, cur_qb;
-   short  qb_diff, qb_remain;
-
-   qb_remain = time_qb;
-   last_qb = HW_READ( TDMA_TQCNT );
-   while( qb_remain>0 )
-   {  cur_qb = HW_READ( TDMA_TQCNT );
-      qb_diff = cur_qb-last_qb;
-      qb_remain -= (qb_diff<0) ? 1 : qb_diff;
-      last_qb = cur_qb;
-   }
-}
+    [SYS] INIT BEGIN
+    [SYS] CPU_HW: CB01
+    [SYS] CPU_SW: 0001
+    [SYS] CPU_ID: 6261
+    [SYS] CPU_SB: 8000
+    [APP] Aduino Dzvero 2020 WizIO
+    [A] Patch Enabled = 5
+    [IDMA-CM] 8202F000 [ 1024 ]
+    [A] Patch Enabled = 2
+    [DP] Dummy test ok
+    [DD] Handshake(1) Ready: 8888
+    [IDMA-CM-D2] 82041000 [ 207 ]
+    [IDMA-CM-D2] 82041180 [ 5073 ]
+    [DD] Handshake(2) Ready: 8888
+    DSP_ROM_VERSION: B970
+    [DUMP-16] Address = 82207400
+    5555, 6666, 0000, 0000, 0001, 0000, 0000, 0000, 000B, B970, 0000, 0000, 0000, 0000, 0000, 0000,
+    0000, 0000, 0000, 0000, 0000, 0000, 0000, 0000, 0000, 0000, 0000, 0000, 0000, 0000, 0000, 0000,
