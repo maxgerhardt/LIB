@@ -1,47 +1,60 @@
-[SYS] INIT BEGIN
-[SYS] CPU_HW: CB01
-[SYS] CPU_SW: 0001
-[SYS] CPU_ID: 6261
-[SYS] CPU_SB: 8000
-[APP] Aduino Dzvero 2020 WizIO
-[DSP] HW INIT
-[PATCH-16] 0x82cc0000 Page=0002, Addr=2DBE, Val=0050.A531
-[PATCH-16] 0x82cc0010 Page=0002, Addr=352B, Val=0051.A531
-[PATCH-16] 0x82cc0020 Page=0000, Addr=063C, Val=0050.A539
-[PATCH-16] 0x82cc0030 Page=0002, Addr=36D5, Val=0051.A539
-[PATCH-16] 0x82cc0040 Page=0006, Addr=0773, Val=0050.A431
-[PATCH-16] 0x82cc0050 Page=0000, Addr=0000, Val=0000.0000
-[PATCH-16] 0x82cc0060 Page=0000, Addr=0000, Val=0000.0000
-[PATCH-16] 0x82cc0070 Page=0000, Addr=0000, Val=0000.0000
-[PATCH-16] 0x82cc0080 Page=0000, Addr=0000, Val=0000.0000
-[PATCH-16] 0x82cc0090 Page=0000, Addr=0000, Val=0000.0000
-[PATCH-16] 0x82cc00a0 Page=0000, Addr=0000, Val=0000.0000
-[PATCH-16] 0x82cc00b0 Page=0000, Addr=0000, Val=0000.0000
-[PATCH-16] 0x82cc00c0 Page=0000, Addr=0000, Val=0000.0000
-[PATCH-16] 0x82cc00d0 Page=0000, Addr=0000, Val=0000.0000
-[PATCH-16] 0x82cc00e0 Page=0000, Addr=0000, Val=0000.0000
-[PATCH-16] 0x82cc00f0 Page=0000, Addr=0000, Val=0000.0000
-[IDMA-CM] 8202F000 [ 1024 ]
-[PATCH-2] 0x82cc0000 Page=0002, Addr=2DBE, Val=0050.A531
-[PATCH-2] 0x82cc0010 Page=0002, Addr=352B, Val=0051.A531
-[DSP] Dummy RW test ok
-[DSP] Wakeup
-[patch-0] 0x82207704 Page=0000, Addr=063C, Val=A550.A539
-[patch-0] 0x82207704 Page=0002, Addr=36D5, Val=A551.A539
-[patch-0] 0x82207704 Page=0006, Addr=0773, Val=A550.A431
-[patch-0] 0x82207704 Page=0000, Addr=0000, Val=5A00.0000
-[patch-0] 0x82207704 Page=0000, Addr=0000, Val=5A00.0000
-[patch-0] 0x82207704 Page=0000, Addr=0000, Val=5A00.0000
-[DSP] INIT
-[DSP] DLL Handshake(1) Ready: 8888
-[IDMA-CM-D2] 82041000 [ 207 ]
-[IDMA-CM-D2] 82041180 [ 5073 ]
-[DSP] DLL Handshake(2) Ready: 8888
-[DSP] ROM_VERSION: B970
-[AM] INIT
-[AFE] INIT
-[RM] MCU_TOPSM_SM_SW_WAKEUP ( STA )
-[SPKP] ON
-[TONE] INIT
-[TONE] PlAY
-[TONE] TEST: no tone....
+void AFE_Chip_Init(void)
+{
+    //Digital part Initialization
+    AFE_AMCU_CON1 = 0x0E00;
+    AFE_AMCU_CON5 = 0x0002;
+    AFE_VMCU_CON3 = 0x0002;
+    AFE_VMCU_CON2 = 0x083C;
+    AFE_AMCU_CON2 = 0x003C;
+    AFE_VMCU_CON1 = 0x0080;
+    //Uplink PGA Gain : 6dB
+    ABBA_VBITX_CON0 |= (0x2 << 6); //0x80
+    //Analog part Initialization and power-on control sequence
+    ABBA_AUDIODL_CON8 |= (RG_LCLDO_TBST_EN);
+    ABBA_AUDIODL_CON4 = 0x01B9;
+    delay_u(10);
+    ABBA_AUDIODL_CON4 |= 0x0040;
+    // should wait 2s~3s to charge cap
+    ABBA_AUDIODL_CON10 = 0x1406; // LDO:2.4v
+    ABBA_AUDIODL_CON9 |= 0x0001;
+    //Speaker Amp setting
+    SPEAKER_CON0 = ((SPEAKER_CON0 & 0xFFCF) | (3 << 4)); // SpkAmpGain << 4
+    //printf("[AFE] INIT\n");
+}
+
+static void AFE_SwitchHPon(void) //<---
+{
+    short restore, tmp;
+    ABBA_AUDIODL_CON11 |= 0x0003;
+    ABBA_AUDIODL_CON7 |= 0x0003;
+    ABBA_AUDIODL_CON0 |= (RG_AUDDACRPWRUP | RG_AUDDACLPWRUP);
+    ABBA_AUDIODL_CON1 &= (~0x6000);
+    ABBA_AUDIODL_CON1 |= 0x4000; // enable HP zcd
+    restore = ABBA_AUDIODL_CON13;
+    ABBA_AUDIODL_CON13 = (restore & ~0x03FF) | 0x02F7; // set to 0dB and enable zcd
+    ABBA_AUDIODL_CON12 |= (audzcdenable);
+    ABBA_AUDIODL_CON0 |= RG_AUDHSPWRUP; //HS buffer power on [must]
+    delay_m(10);
+    ABBA_AUDIODL_CON5 |= 0x0001;
+    delay_m(10);
+    ABBA_AUDIODL_CON0 |= 0x0001;
+    delay_m(10);
+    ABBA_AUDIODL_CON2 |= 0x0001;
+    ABBA_AUDIODL_CON0 |= 0x000C;
+    ABBA_AUDIODL_CON2 &= (~0x0001);
+    //delay_m(5);
+    tmp = ABBA_AUDIODL_CON1 & (~0x1FF0); // to avoid set path pop
+    ABBA_AUDIODL_CON1 = tmp | 0x0120;
+    ABBA_AUDIODL_CON5 &= (~0x0001);
+    ABBA_AUDIODL_CON0 &= (~RG_AUDHSPWRUP);
+    ABBA_AUDIODL_CON4 &= (~(RG_ADEPOP_EN | RG_DEPOP_VCM_EN));
+    ABBA_AUDIODL_CON13 = restore;
+}
+
+void audio_test(void)
+{
+    AFE_Chip_Init();
+    AFE_SwitchHPon();
+    AFE_TurnOn8K(); // voice dac
+    AFE_DAC_TEST = (1<<15) + (7 << 8) + 2; // test over voice, 7 amp, freq[8]
+}
