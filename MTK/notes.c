@@ -64,5 +64,5 @@ void audio_test(void)
     AFE_Chip_Init();
     AFE_SwitchHPon();
     AFE_TurnOn8K(); // voice dac
-    AFE_DAC_TEST = (1<<15) + (7 << 8) + 2; // test over voice, 7 amp, freq[8]
+    AFE_DAC_TEST = (1<<15) + (7 << 8) + 2; // test over voice, 7 amp[3], freq[8]
 }
