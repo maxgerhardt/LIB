@@ -22,7 +22,7 @@ void AFE_Chip_Init(void)
     //printf("[AFE] INIT\n");
 }
 
-static void AFE_SwitchHPon(void) //<---
+static void AFE_SwitchHPon(void) 
 {
     short restore, tmp;
     ABBA_AUDIODL_CON11 |= 0x0003;
