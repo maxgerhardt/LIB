@@ -51,6 +51,14 @@ static void AFE_SwitchHPon(void) //<---
     ABBA_AUDIODL_CON13 = restore;
 }
 
+void AFE_TurnOn8K(void) // open voice dac
+{
+    if ((AFE_AMCU_CON0 & 0x0001) == 0)
+        AFE_VMCU_CON3 |= 0x0020;
+    AFE_DCLK_CtrlSeq(true, false, DL_PATH);
+    DP_8K_LIMITER_CTRL &= (~0x1);
+}
+
 void audio_test(void)
 {
     AFE_Chip_Init();
