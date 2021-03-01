@@ -1,4 +1,4 @@
-| #define | as Value | File |
+ | #define | as Value | File | 
 | | PICO_DEFAULT_UART | | pico.h | | | 
 | | PICO_DEFAULT_UART | 0 | pico.h         | | | 
 | | PICO_DEFAULT_UART_TX_PIN | pico.h   | | | 
