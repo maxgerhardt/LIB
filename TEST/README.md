@@ -21,64 +21,64 @@
  | PICO_DEFAULT_UART | 1 | vgaboard.h | 
  | PICO_DEFAULT_UART_TX_PINvgaboard.h | 
  | PICO_DEFAULT_UART_TX_PIN | 20 | vgaboard.h | 
- | PICO_DEFAULT_UART_RX_PINvgaboard.h | 
+ | PICO_DEFAULT_UART_RX_PIN | | vgaboard.h | 
  | PICO_DEFAULT_UART_RX_PIN | 21 | vgaboard.h | 
- | PICO_DEFAULT_LED_PINvgaboard.h | 
- | PICO_DEFAULT_LED_PINvgaboard.h | 
- | PICO_SCANVIDEO_COLOR_PIN_BASEvgaboard.h | 
+ | PICO_DEFAULT_LED_PIN | | vgaboard.h | 
+ | PICO_DEFAULT_LED_PIN | | vgaboard.h | 
+ | PICO_SCANVIDEO_COLOR_PIN_BASE | | vgaboard.h | 
  | PICO_SCANVIDEO_COLOR_PIN_BASE | VGABOARD_VGA_COLOR_PIN_BASE | vgaboard.h | 
- | PICO_SCANVIDEO_SYMC_PIN_BASEvgaboard.h | 
+ | PICO_SCANVIDEO_SYMC_PIN_BASE | | vgaboard.h | 
  | PICO_SCANVIDEO_SYNC_PIN_BASE | VGABOARD_VGA_SYNC_PIN_BASE | vgaboard.h | 
- | PICO_SD_CLK_PINvgaboard.h | 
+ | PICO_SD_CLK_PIN | | vgaboard.h | 
  | PICO_SD_CLK_PIN | VGABOARD_SD_CLK_PIN | vgaboard.h | 
- | PICO_SD_CMD_PINvgaboard.h | 
+ | PICO_SD_CMD_PIN | | vgaboard.h | 
  | PICO_SD_CMD_PIN | VGABOARD_SD_CMD_PIN | vgaboard.h | 
- | PICO_SD_DAT0_PINvgaboard.h | 
+ | PICO_SD_DAT0_PIN | | vgaboard.h | 
  | PICO_SD_DAT0_PIN | VGABOARD_SD_DAT0_PIN | vgaboard.h | 
  | PICO_AUDIO_I2S_DATA_PIN | VGABOARD_I2S_DIN_PIN | vgaboard.h | 
  | PICO_AUDIO_I2S_CLOCK_PIN_BASE | VGABOARD_I2S_BCK_PIN | vgaboard.h | 
  | PICO_AUDIO_PWM_L_PIN | VGABOARD_PWM_L_PIN | vgaboard.h | 
  | PICO_AUDIO_PWM_R_PIN | VGABOARD_PWM_R_PIN | vgaboard.h | 
- | PICO_FLASH_SPI_CLKDIVvgaboard.h | 
+ | PICO_FLASH_SPI_CLKDIV | | vgaboard.h | 
  | PICO_FLASH_SPI_CLKDIV | 2 | vgaboard.h | 
- | PICO_FLASH_SIZE_BYTESvgaboard.h | 
- | PICO_FLASH_SIZE_BYTESvgaboard.h | 
+ | PICO_FLASH_SIZE_BYTES | | vgaboard.h | 
+ | PICO_FLASH_SIZE_BYTES | | vgaboard.h | 
  | PICO_SMPS_MODE_PIN | 23 | vgaboard.h | 
- | PICO_FLOAT_SUPPORT_ROM_V1vgaboard.h | 
+ | PICO_FLOAT_SUPPORT_ROM_V1 | | vgaboard.h | 
  | PICO_FLOAT_SUPPORT_ROM_V1 | 1 | vgaboard.h | 
- | PICO_DOUBLE_SUPPORT_ROM_V1vgaboard.h | 
+ | PICO_DOUBLE_SUPPORT_ROM_V1 | | vgaboard.h | 
  | PICO_DOUBLE_SUPPORT_ROM_V1 | 1 | vgaboard.h | 
  | PICO_VGA_BOARDvgaboard.h | 
- | PICO_SDK_VERSION_MAJORversion.h.in | 
- | PICO_SDK_VERSION_MINORversion.h.in | 
+ | PICO_SDK_VERSION_MAJOR | | version.h.in | 
+ | PICO_SDK_VERSION_MINOR | | version.h.in | 
  | PICO_SDK_VERSION_REVISION | ${PICO_SDK_VERSION_REVISION} | version.h.in | 
- | PICO_SDK_VERSION_STRINGversion.h.in | 
+ | PICO_SDK_VERSION_STRING | | version.h.in | 
  | PICO_NO_BINARY_INFO | 1 | binary_info.h | 
  | PICO_TIME_SLEEP_OVERHEAD_ADJUST_UStime.h | 
  | PICO_TIME_SLEEP_OVERHEAD_ADJUST_US | 6 | time.h | 
  | PICO_TIME_DEFAULT_ALARM_POOL_DISABLEDtime.h | 
  | PICO_TIME_DEFAULT_ALARM_POOL_DISABLED | 0 | time.h | 
- | PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUMtime.h | 
+ | PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUM | | time.h | 
  | PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUM | 3 | time.h | 
- | PICO_TIME_DEFAULT_ALARM_POOL_MAX_TIMERStime.h | 
+ | PICO_TIME_DEFAULT_ALARM_POOL_MAX_TIMERS | | time.h | 
  | PICO_TIME_DEFAULT_ALARM_POOL_MAX_TIMERS | 16 | time.h | 
  | PICO_PHEAP_MAX_ENTRIESpheap.h | 
  | PICO_PHEAP_MAX_ENTRIES | 255 | pheap.h | 
- | PICO_STACK_SIZEplatform_defs.h | 
+ | PICO_STACK_SIZE | | platform_defs.h | 
  | PICO_STACK_SIZE | 0x800u | platform_defs.h | 
- | PICO_HEAP_SIZEplatform_defs.h | 
+ | PICO_HEAP_SIZE | | platform_defs.h | 
  | PICO_HEAP_SIZE | 0x800 | platform_defs.h | 
- | PICO_NO_RAM_VECTOR_TABLEplatform_defs.h | 
+ | PICO_NO_RAM_VECTOR_TABLE | | platform_defs.h | 
  | PICO_NO_RAM_VECTOR_TABLE | 0 | platform_defs.h | 
- | PICO_FLASH_SPI_CLKDIVboot2_generic_03h.S | 
+ | PICO_FLASH_SPI_CLKDIV | | boot2_generic_03h.S | 
  | PICO_FLASH_SPI_CLKDIV | 4 | boot2_generic_03h.S | 
- | PICO_FLASH_SPI_CLKDIVboot2_is25lp080.S | 
+ | PICO_FLASH_SPI_CLKDIV | | boot2_is25lp080.S | 
  | PICO_FLASH_SPI_CLKDIV | 4 | boot2_is25lp080.S | 
- | PICO_FLASH_SPI_CLKDIVboot2_w25q080.S | 
+ | PICO_FLASH_SPI_CLKDIV | | boot2_w25q080.S | 
  | PICO_FLASH_SPI_CLKDIV | 4 | boot2_w25q080.S | 
- | PICO_FLASH_SPI_CLKDIVboot2_w25x10cl.S | 
+ | PICO_FLASH_SPI_CLKDIV | | boot2_w25x10cl.S | 
  | PICO_FLASH_SPI_CLKDIV | 4 | boot2_w25x10cl.S | 
- | PICO_FLASH_SIZE_BYTESflash.h | 
+ | PICO_FLASH_SIZE_BYTES | | flash.h | 
  | PICO_DEBUG_PIN_BASEgpio.h | 
  | PICO_DEBUG_PIN_BASE | 19u | gpio.h | 
  | PICO_DEBUG_PIN_COUNTgpio.h | 
@@ -105,9 +105,9 @@
  | PICO_SPINLOCK_ID_STRIPED_LAST | 23 | sync.h | 
  | PICO_SPINLOCK_ID_CLAIM_FREE_FIRSTsync.h | 
  | PICO_SPINLOCK_ID_CLAIM_FREE_FIRST | 24 | sync.h | 
- | PICO_SPINLOCK_ID_CLAIM_FREE_ENDsync.h | 
+ | PICO_SPINLOCK_ID_CLAIM_FREE_END | | sync.h | 
  | PICO_SPINLOCK_ID_CLAIM_FREE_END | 31 | sync.h | 
- | PICO_UART_ENABLE_CRLF_SUPPORTuart.h | 
+ | PICO_UART_ENABLE_CRLF_SUPPORT | | uart.h | 
  | PICO_UART_ENABLE_CRLF_SUPPORT | 1 | uart.h | 
  | PICO_UART_DEFAULT_CRLFuart.h | 
  | PICO_UART_DEFAULT_CRLF | 0 | uart.h | 
