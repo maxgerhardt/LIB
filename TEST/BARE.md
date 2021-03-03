@@ -27,9 +27,10 @@ if **upload_port** is empty, the UF2 file exist in **.pio/build/** folder after 
 ***
 ### [PlatformIO Documentation](https://docs.platformio.org/en/latest/projectconf/section_env_build.html)
 ```ini
-build_unflags = -D BOO ; remove this
-build_flags   = -D FOO ; add this
-lib_deps      = mars_rover ; load library
+build_unflags  = -D BOO          ; remove this
+build_flags    = -D FOO          ; add this
+lib_deps       = rover           ; load library
+lib_extra_dirs = /mars/libraries ; other libs path
 ```
 
 ***
