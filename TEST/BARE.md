@@ -9,9 +9,9 @@ if function **main()** exist in **other_main_file.c**
 * [pico-examples](https://github.com/raspberrypi/pico-examples)
 * [pico-playground](https://github.com/raspberrypi/pico-playground)
 * [pico-extras](https://github.com/raspberrypi/pico-extras)
-* [platform](https://github.com/Wiz-IO/wizio-pico/tree/main/examples/baremetal)
+* [platform examples](https://github.com/Wiz-IO/wizio-pico/tree/main/examples/baremetal)
 
-# platformio.ini
+# platformio.ini ( minimal )
 ```ini
 [env:pico]
 platform = wizio-pico
@@ -33,27 +33,30 @@ build_flags   = -D FOO ; add this
 ## Platform optional board_build.keys
 
 ***
+### USB
+```ini
+lib_deps = 
+        tinyusb ; load TinyUSB library
+```
+**By default the tinyUSB is removed for speed**
 
+***
+
+***
 ### STDIO ( UART, USB, SEMIHOSTING )
 ```ini
-build_flags = -D PICO_STDIO_UART ; -D PICO_STDIO_USB ; PICO_STDIO_SEMIHOSTING
-```
-empty key: without stdio
+lib_deps = 
+        tinyusb ; load TinyUSB library
 
-if **PICO_STDIO_USB** is defined, the tinyUSB is added automatically
+build_flags = 
+        ; enable stdio 
+        -D PICO_STDIO_USB
+        ;-D PICO_STDIO_UART
+        ;-D PICO_STDIO_SEMIHOSTING
+        ;-D PICO_PRINTF_PICO
+```
 
 ***
-
-### use_usb
-```ini
-board_build.use_usb = 1
-```
-ADD **tinyUSB** library, by default ( empty key or = 0 ) tinyUSB is removed for speed
-
-if **PICO_STDIO_USB** is defined, the tinyUSB is added automatically
-
-***
-
 ### heap
 ```ini
 board_build.heap = 4096
@@ -61,7 +64,6 @@ board_build.heap = 4096
 empty key, default heap size = 2048
 
 ***
-
 ### boot
 ```ini
 board_build.boot= w25q080
