@@ -123,8 +123,8 @@ monitor_speed = 115200
 
 lib_deps = 
         tinyusb
-        freertos ; need only to copy FreeRTOSConfig.h template
-        fatfs    ; need only to copy ffconf.h template
+        ;freertos ; need only to copy FreeRTOSConfig.h template
+        ;fatfs    ; need only to copy ffconf.h template
 
 build_flags = 
         -D PICO_STDIO_USB     
