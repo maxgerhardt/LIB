@@ -30,7 +30,6 @@ if **upload_port** is empty, the UF2 file exist in **.pio/build/** folder after 
 build_unflags = -D FOO ; remove this
 build_flags   = -D FOO ; add this
 ```
-## Platform optional board_build.keys
 
 ***
 ### USB
@@ -39,8 +38,6 @@ lib_deps =
         tinyusb ; load TinyUSB library
 ```
 **By default the tinyUSB is removed for speed**
-
-***
 
 ***
 ### STDIO ( UART, USB, SEMIHOSTING )
