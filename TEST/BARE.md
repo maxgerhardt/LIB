@@ -113,7 +113,8 @@ else other Application / UF2 **start address**
 ***
 ## FreeRTOS
 ```ini
-board_build.use_freertos = 1
+lib_deps = 
+        freertos ; load library
 ```
 **your-project/include/**[FreeRTOSConfig.h](https://github.com/Wiz-IO/framework-wizio-pico/blob/main/templates/Template-FreeRTOSConfig.h)
 
