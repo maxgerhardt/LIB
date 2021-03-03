@@ -27,7 +27,7 @@ if **upload_port** is empty, the UF2 file exist in **.pio/build/** folder after 
 ***
 ### [PlatformIO Documentation](https://docs.platformio.org/en/latest/projectconf/section_env_build.html)
 ```ini
-build_unflags = -D FOO ; remove this
+build_unflags = -D BOO ; remove this
 build_flags   = -D FOO ; add this
 ```
 
