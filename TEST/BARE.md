@@ -110,16 +110,6 @@ if is empty, the address depend from **bynary_type** key
 else other Application / UF2 **start address**
 
 ***
-## FreeRTOS
-```ini
-lib_deps = 
-        freertos ; load library
-```
-**your-project/include/**[FreeRTOSConfig.h](https://github.com/Wiz-IO/framework-wizio-pico/blob/main/templates/Template-FreeRTOSConfig.h)
-
-[basic example](https://github.com/Wiz-IO/wizio-pico/tree/main/examples/baremetal/pico-freertos)
-***
-
 ## INI EXAMPLE
 ```ini
 [env:pico]
@@ -133,7 +123,7 @@ monitor_speed = 115200
 
 lib_deps = 
         tinyusb
-        freertos
+        freertos ; need only to copy FreeRTOSConfig.h template
 
 build_flags = 
         -D PICO_STDIO_USB     
