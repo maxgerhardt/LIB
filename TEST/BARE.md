@@ -29,7 +29,7 @@ if **upload_port** is empty, the UF2 file exist in **.pio/build/** folder after 
 ```ini
 build_unflags = -D BOO ; remove this
 build_flags   = -D FOO ; add this
-lib_deps      = use_some_library
+lib_deps      = load_some_library
 ```
 
 ***
