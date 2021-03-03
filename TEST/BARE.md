@@ -131,7 +131,10 @@ upload_port   = E:\
 monitor_port  = COM34
 monitor_speed = 115200
 
-;board_build.use_usb = 1
-;board_build.bynary_type = default
-;board_build.boot = w25q080
+lib_deps = 
+        tinyusb
+        freertos
+
+build_flags = 
+        -D PICO_STDIO_USB     
 ```
