@@ -20,8 +20,7 @@ void __attribute__((vector(_CORE_TIMER_VECTOR), interrupt(CORE_TIMER_INT_LINKAGE
  // 4. Multiply by CORE_TIMER_INTERRUPT_TICKS to get ticks. This is the offset to the last setting to be added to Count and _RTC64.
  // It accounts for any missed interrupts, and allows at least 1/2 interrupt period before the next match.
  
- ticks = ((ReadCT()-ReadCTCompare()+CORE_TIMER_INTERRUPT_TICKS/2) / (signed) CORE_TIMER_INTERRUPT_TICKS + 1) \
- * CORE_TIMER_INTERRUPT_TICKS;
+ ticks = ((ReadCT()-ReadCTCompare()+CORE_TIMER_INTERRUPT_TICKS/2) / (signed) CORE_TIMER_INTERRUPT_TICKS + 1) * CORE_TIMER_INTERRUPT_TICKS;
 _rtc64 += ticks;
  
  WriteCTCompare(ReadCTCompare()+ticks);
